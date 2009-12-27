@@ -25,7 +25,6 @@
 #include "sd_raw.h"
 
 #include "global.h"
-#include "antlib.h"
 
 #include <stdarg.h>
 #include <fcntl.h>
@@ -38,8 +37,6 @@
 
 #include "antdefines.h"
 #include "antmessage.h"
-#include "antlib.h"
-#include "queue.h"
 #include "serial.h"
 #include "rprintf.h"
 
@@ -1417,7 +1414,16 @@ int ANT_send(int args, ... )
 	
 	buf[i] = checkSum(buf, i);  // Count sync byte + checksum
 
-	queue_add(&txQueue, buf, i+1);
+        rprintf("%c", buf);	
+        for(int i=0; i < 2; i++)
+        {
+           statLight(0,ON);
+           delay_ms(50);
+           statLight(0,OFF);
+           statLight(1,ON);
+           delay_ms(50);
+           statLight(1,OFF);
+        }
 	
 	return RETURN_SUCCESS;
 }
@@ -1437,8 +1443,8 @@ int ANT_sendStr(int len, UCHAR *data)
 	}
 	
 	buf[i] = checkSum(buf, i);	
-	queue_add(&txQueue, buf, i+1);
 
+        rprintf("%c", buf);
 	perror("TX");	
 	
 	return RETURN_SUCCESS;
@@ -1447,23 +1453,9 @@ int ANT_sendStr(int len, UCHAR *data)
 
 int ANT_tx(int _fd, UCHAR *data, int length)
 {
-	int rc, i;
-	
-	//write_debug("txda: ");
-	//for (i = 0; i < length; i++)
-	//{
-	//	write_debug(data[i]);
-	//}
-	//write_debug("\n");	
-	
-	//if (length != (rc=write(fd, data, length))) {
-	//	perror("ANT_send");
-	//	return RETURN_ERROR;
-	//}		
-	
         rprintf(data); 
         
-        for(int i=0; i < 10; i++)
+        for(int i=0; i < 2; i++)
         {
            statLight(0,ON);
            delay_ms(50);
@@ -1472,10 +1464,9 @@ int ANT_tx(int _fd, UCHAR *data, int length)
            delay_ms(50);
            statLight(1,OFF);
         }
-	
-	return RETURN_SUCCESS;
+     return 0;
 }
-
+/*
 int ANT_cfgCapabilties(UCHAR *data, cfg_capabilities *cfg, UCHAR size)
 {
 	bzero(cfg, sizeof(cfg_capabilities));
@@ -1514,6 +1505,7 @@ int ANT_cfgCapabilties(UCHAR *data, cfg_capabilities *cfg, UCHAR size)
 	return RETURN_SUCCESS;
 	
 }
+*/
 
 int hstr2hex(UCHAR *hex, char *hexstr, int size)
 {

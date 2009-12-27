@@ -36,8 +36,6 @@ TARGET = main
 # use file-extension c for "c-only"-files
 SRC = $(TARGET).c 
 
-SRC += queue.c
-
 #Needed most of the time for basic functions
 SRC += $(LIBPATH)syscalls.c 
 SRC += $(LIBPATH)rprintf.c 
