@@ -1,0 +1,820 @@
+   1              		.file	"antlib.c"
+   9              	.Ltext0:
+  10              		.align	2
+  11              		.global	checkSum
+  13              	checkSum:
+  14              	.LFB7:
+  15              		.file 1 "antlib.c"
+   1:antlib.c      **** #include <stdio.h>
+   2:antlib.c      **** #include <stdlib.h>
+   3:antlib.c      **** #include <stdarg.h>
+   4:antlib.c      **** 
+   5:antlib.c      **** #include <fcntl.h>
+   6:antlib.c      **** #include <unistd.h>
+   7:antlib.c      **** #include <signal.h>
+   8:antlib.c      **** 
+   9:antlib.c      **** #include <string.h>
+  10:antlib.c      **** 
+  11:antlib.c      **** #include "global.h"
+  12:antlib.c      **** 
+  13:antlib.c      **** #include "antdefines.h"
+  14:antlib.c      **** #include "antmessage.h"
+  15:antlib.c      **** #include "antlib.h"
+  16:antlib.c      **** #include "queue.h"
+  17:antlib.c      **** #include "serial.h"
+  18:antlib.c      **** #include "rprintf.h"
+  19:antlib.c      **** 
+  20:antlib.c      **** #define ON 1
+  21:antlib.c      **** #define OFF 0
+  22:antlib.c      **** 
+  23:antlib.c      **** int ANT_send(int args, ... )
+  24:antlib.c      **** {
+  25:antlib.c      **** 	va_list ap;
+  26:antlib.c      **** 	int i; 	
+  27:antlib.c      **** 	UCHAR buf[MAXMSG];
+  28:antlib.c      **** 	
+  29:antlib.c      **** 	va_start(ap, args);	
+  30:antlib.c      **** 	//fd = va_arg(ap, int); 	// Get file descriptor
+  31:antlib.c      **** 	
+  32:antlib.c      **** 	buf[0] = MESG_TX_SYNC;	// Everything starts with sync
+  33:antlib.c      **** 	buf[1] = args-1; 		// Number of bytes to TX (don't count fd)
+  34:antlib.c      **** 
+  35:antlib.c      **** 	for(i = 2; i <= args+1; i++) 
+  36:antlib.c      **** 	{
+  37:antlib.c      **** 		buf[i] = va_arg(ap, int);
+  38:antlib.c      **** 	}
+  39:antlib.c      **** 	
+  40:antlib.c      **** 	buf[i] = checkSum(buf, i);  // Count sync byte + checksum
+  41:antlib.c      **** 
+  42:antlib.c      **** 	queue_add(&txQueue, buf, i+1);
+  43:antlib.c      **** 	
+  44:antlib.c      **** 	return RETURN_SUCCESS;
+  45:antlib.c      **** }
+  46:antlib.c      **** 
+  47:antlib.c      **** 
+  48:antlib.c      **** int ANT_sendStr(int len, UCHAR *data)
+  49:antlib.c      **** {
+  50:antlib.c      **** 	UCHAR buf[MAXMSG];
+  51:antlib.c      **** 	int i;
+  52:antlib.c      **** 	
+  53:antlib.c      **** 	buf[0] = MESG_TX_SYNC;	// Everything starts with sync
+  54:antlib.c      **** 	buf[1] = len-1;    		// Number of bytes to TX (don't count fd)
+  55:antlib.c      **** 	
+  56:antlib.c      **** 	for (i=2; i < len+2; i++)
+  57:antlib.c      **** 	{
+  58:antlib.c      **** 		buf[i] = data[i-2];
+  59:antlib.c      **** 	}
+  60:antlib.c      **** 	
+  61:antlib.c      **** 	buf[i] = checkSum(buf, i);	
+  62:antlib.c      **** 	queue_add(&txQueue, buf, i+1);
+  63:antlib.c      **** 
+  64:antlib.c      **** 	perror("TX");	
+  65:antlib.c      **** 	
+  66:antlib.c      **** 	return RETURN_SUCCESS;
+  67:antlib.c      **** }
+  68:antlib.c      **** 
+  69:antlib.c      **** 
+  70:antlib.c      **** int ANT_tx(int fd, UCHAR *data, int length)
+  71:antlib.c      **** {
+  72:antlib.c      **** 	int rc, i;
+  73:antlib.c      **** 	
+  74:antlib.c      **** 	write_debug("txda: ");
+  75:antlib.c      **** 	for (i = 0; i < length; i++)
+  76:antlib.c      **** 	{
+  77:antlib.c      **** 		write_debug("%02x ", data[i]);
+  78:antlib.c      **** 	}
+  79:antlib.c      **** 	write_debug("\n");	
+  80:antlib.c      **** 	
+  81:antlib.c      **** 	//if (length != (rc=write(fd, data, length))) {
+  82:antlib.c      **** 	//	perror("ANT_send");
+  83:antlib.c      **** 	//	return RETURN_ERROR;
+  84:antlib.c      **** 	//}		
+  85:antlib.c      **** 	
+  86:antlib.c      ****         rprintf(data); 
+  87:antlib.c      ****         
+  88:antlib.c      ****         for(int i=0; i < 10; i++)
+  89:antlib.c      ****         {
+  90:antlib.c      ****            stat(0,ON);
+  91:antlib.c      ****            delay_ms(50);
+  92:antlib.c      ****            stat(0,OFF);
+  93:antlib.c      ****            stat(1,ON);
+  94:antlib.c      ****            delay_ms(50);
+  95:antlib.c      ****            stat(1,OFF);
+  96:antlib.c      ****         }
+  97:antlib.c      **** 	
+  98:antlib.c      **** 	return RETURN_SUCCESS;
+  99:antlib.c      **** }
+ 100:antlib.c      **** 
+ 101:antlib.c      **** int ANT_cfgCapabilties(UCHAR *data, cfg_capabilities *cfg, UCHAR size)
+ 102:antlib.c      **** {
+ 103:antlib.c      **** 	bzero(cfg, sizeof(cfg_capabilities));
+ 104:antlib.c      **** 	
+ 105:antlib.c      **** 	cfg->maxChannels	= data[0];	
+ 106:antlib.c      **** 	cfg->maxNetworks	= data[1];
+ 107:antlib.c      **** 	cfg->stdOptions		= data[2];
+ 108:antlib.c      **** 	cfg->advOptions[0]	= data[3];
+ 109:antlib.c      **** 	
+ 110:antlib.c      **** 	if (size == 6) // Expect size 7 for this msg type
+ 111:antlib.c      **** 	{
+ 112:antlib.c      **** 		cfg->advOptions[1] = data[4];
+ 113:antlib.c      **** 		cfg->maxDataChannels = data[5];
+ 114:antlib.c      **** 	}
+ 115:antlib.c      **** 	
+ 116:antlib.c      **** 	if (DEBUG)
+ 117:antlib.c      **** 	{
+ 118:antlib.c      **** 		printf("\n[DEBUG] Device Capabilites\n");
+ 119:antlib.c      **** 		printf("--------------------------\n");
+ 120:antlib.c      **** 		printf("Max Ch                %4i\n", cfg->maxChannels);
+ 121:antlib.c      **** 		printf("Max Networks          %4i\n", cfg->maxNetworks);
+ 122:antlib.c      **** 		printf("Standard Opts         0x%02x\n", cfg->stdOptions);
+ 123:antlib.c      **** 		printf("Advanced Opts1        0x%02x ", cfg->advOptions[0]);
+ 124:antlib.c      **** 		
+ 125:antlib.c      **** 		if (cfg->advOptions[0] & 0x02) printf("[NETWORK_EN] ");
+ 126:antlib.c      **** 		if (cfg->advOptions[0] & 0x08) printf("[SERIAL_NUMBER_EN] ");
+ 127:antlib.c      **** 		if (cfg->advOptions[0] & 0x10) printf("[PER_CHANNEL_TX_POWER_EN] ");
+ 128:antlib.c      **** 		if (cfg->advOptions[0] & 0x20) printf("[LOW_PRIORITY_SEARCH_EN] ");
+ 129:antlib.c      **** 		if (cfg->advOptions[0] & 0x40) printf("[SENSRCORE_EN] ");
+ 130:antlib.c      **** 		if (cfg->advOptions[0] & 0x80) printf("[SEARCH_LIST_EN] ");
+ 131:antlib.c      **** 				
+ 132:antlib.c      **** 		printf("\nAdvanced Opts2        0x%02x\n", cfg->advOptions[1]);
+ 133:antlib.c      **** 		printf("Max Data Ch           %4i\n\n", cfg->stdOptions);
+ 134:antlib.c      **** 	}
+ 135:antlib.c      **** 	
+ 136:antlib.c      **** 	return RETURN_SUCCESS;
+ 137:antlib.c      **** 	
+ 138:antlib.c      **** }
+ 139:antlib.c      **** 
+ 140:antlib.c      **** int hstr2hex(UCHAR *hex, char *hexstr, int size)
+ 141:antlib.c      **** {
+ 142:antlib.c      **** 	int i;
+ 143:antlib.c      **** 	
+ 144:antlib.c      **** 	if ((size % 2) != 0)
+ 145:antlib.c      **** 	{
+ 146:antlib.c      **** 		printf("hstr2hex error: input hex string has to be divisible by 2 [%i]\n", size);
+ 147:antlib.c      **** 		exit(RETURN_ERROR);
+ 148:antlib.c      **** 	}
+ 149:antlib.c      **** 	
+ 150:antlib.c      **** 	for (i=0; i < (size/2); i++)
+ 151:antlib.c      **** 	{
+ 152:antlib.c      **** 		hex[i] = hexval(hexstr[i*2])*16 + hexval(hexstr[i*2 + 1]);
+ 153:antlib.c      **** 	}
+ 154:antlib.c      **** 	
+ 155:antlib.c      **** 	return RETURN_SUCCESS;
+ 156:antlib.c      **** }
+ 157:antlib.c      **** 
+ 158:antlib.c      **** UCHAR checkSum(UCHAR *data, int length)
+ 159:antlib.c      **** {
+  16              		.loc 1 159 0
+  17              		@ Function supports interworking.
+  18              		@ args = 0, pretend = 0, frame = 0
+  19              		@ frame_needed = 0, uses_anonymous_args = 0
+  20              		@ link register save eliminated.
+  21              	.LVL0:
+  22              		.loc 1 159 0
+  23 0000 00C0A0E1 		mov	ip, r0
+ 160:antlib.c      **** 	int i;
+ 161:antlib.c      **** 	UCHAR chksum = data[0]; 
+  24              		.loc 1 161 0
+  25 0004 0120A0E3 		mov	r2, #1
+  26              	.LVL1:
+  27 0008 0000D0E5 		ldrb	r0, [r0, #0]	@ zero_extendqisi2
+  28              	.LVL2:
+  29 000c 020000EA 		b	.L2
+  30              	.L3:
+ 162:antlib.c      **** 		
+ 163:antlib.c      **** 	for (i = 1; i < length; i++)
+ 164:antlib.c      **** 		chksum ^= data[i];  // +1 since skip prefix sync code, we already counted it
+  31              		.loc 1 164 0
+  32 0010 0230DCE7 		ldrb	r3, [ip, r2]	@ zero_extendqisi2
+  33              		.loc 1 163 0
+  34 0014 012082E2 		add	r2, r2, #1
+  35              		.loc 1 164 0
+  36 0018 030020E0 		eor	r0, r0, r3
+  37              	.LVL3:
+  38              	.L2:
+  39              		.loc 1 163 0
+  40 001c 010052E1 		cmp	r2, r1
+  41 0020 FAFFFFBA 		blt	.L3
+ 165:antlib.c      **** 	
+ 166:antlib.c      **** 	return chksum;
+ 167:antlib.c      **** }
+  42              		.loc 1 167 0
+  43 0024 1EFF2FE1 		bx	lr
+  44              	.LFE7:
+  46              		.section	.rodata.str1.1,"aMS",%progbits,1
+  47              	.LC0:
+  48 0000 68737472 		.ascii	"hstr2hex error: input hex string has to be divisibl"
+  48      32686578 
+  48      20657272 
+  48      6F723A20 
+  48      696E7075 
+  49 0033 65206279 		.ascii	"e by 2 [%i]\012\000"
+  49      2032205B 
+  49      25695D0A 
+  49      00
+  50              		.text
+  51              		.align	2
+  52              		.global	hstr2hex
+  54              	hstr2hex:
+  55              	.LFB6:
+  56              		.loc 1 141 0
+  57              		@ Function supports interworking.
+  58              		@ args = 0, pretend = 0, frame = 0
+  59              		@ frame_needed = 0, uses_anonymous_args = 0
+  60              	.LVL4:
+  61              		.loc 1 144 0
+  62 0028 01C012E2 		ands	ip, r2, #1
+  63              		.loc 1 141 0
+  64 002c 30402DE9 		stmfd	sp!, {r4, r5, lr}
+  65              	.LCFI0:
+  66              		.loc 1 141 0
+  67 0030 0050A0E1 		mov	r5, r0
+  68              		.loc 1 144 0
+  69              	.LVL5:
+  70              		.loc 1 150 0
+  71 0034 A23F8200 		addeq	r3, r2, r2, lsr #31
+  72 0038 0100A001 		moveq	r0, r1
+  73 003c C340A001 		moveq	r4, r3, asr #1
+  74 0040 0C10A001 		moveq	r1, ip
+  75              	.LVL6:
+  76 0044 1800000A 		beq	.L7
+  77              	.LVL7:
+  78              	.L6:
+  79              		.loc 1 146 0
+  80 0048 0210A0E1 		mov	r1, r2
+  81              	.LVL8:
+  82 004c 6C009FE5 		ldr	r0, .L14
+  83 0050 FEFFFFEB 		bl	printf
+  84              	.LVL9:
+  85              		.loc 1 147 0
+  86 0054 0000E0E3 		mvn	r0, #0
+  87 0058 FEFFFFEB 		bl	exit
+  88              	.LVL10:
+  89              	.L11:
+  90              		.loc 1 152 0
+  91 005c 0020D0E5 		ldrb	r2, [r0, #0]	@ zero_extendqisi2
+  92              	.LVL11:
+  93 0060 30C042E2 		sub	ip, r2, #48
+  94 0064 FF300CE2 		and	r3, ip, #255
+  95 0068 090053E3 		cmp	r3, #9
+  96 006c DF300282 		andhi	r3, r2, #223
+  97 0070 0C32A091 		movls	r3, ip, asl #4
+  98 0074 37304382 		subhi	r3, r3, #55
+  99 0078 01C0D0E5 		ldrb	ip, [r0, #1]	@ zero_extendqisi2
+ 100 007c 0332A081 		movhi	r3, r3, asl #4
+ 101 0080 FF2003E2 		and	r2, r3, #255
+ 102 0084 30304CE2 		sub	r3, ip, #48
+ 103 0088 FF3003E2 		and	r3, r3, #255
+ 104 008c 090053E3 		cmp	r3, #9
+ 105 0090 2030CC83 		bichi	r3, ip, #32
+ 106 0094 37304382 		subhi	r3, r3, #55
+ 107 0098 FF300382 		andhi	r3, r3, #255
+ 108 009c 023083E0 		add	r3, r3, r2
+ 109 00a0 0130C5E7 		strb	r3, [r5, r1]
+ 110              		.loc 1 150 0
+ 111 00a4 020080E2 		add	r0, r0, #2
+ 112 00a8 011081E2 		add	r1, r1, #1
+ 113              	.LVL12:
+ 114              	.L7:
+ 115 00ac 040051E1 		cmp	r1, r4
+ 116 00b0 E9FFFFBA 		blt	.L11
+ 117              		.loc 1 156 0
+ 118 00b4 0000A0E3 		mov	r0, #0
+ 119 00b8 3040BDE8 		ldmfd	sp!, {r4, r5, lr}
+ 120 00bc 1EFF2FE1 		bx	lr
+ 121              	.L15:
+ 122              		.align	2
+ 123              	.L14:
+ 124 00c0 00000000 		.word	.LC0
+ 125              	.LFE6:
+ 127              		.section	.rodata.str1.1
+ 128              	.LC1:
+ 129 0040 0A5B4445 		.ascii	"\012[DEBUG] Device Capabilites\000"
+ 129      4255475D 
+ 129      20446576 
+ 129      69636520 
+ 129      43617061 
+ 130              	.LC2:
+ 131 005c 2D2D2D2D 		.ascii	"--------------------------\000"
+ 131      2D2D2D2D 
+ 131      2D2D2D2D 
+ 131      2D2D2D2D 
+ 131      2D2D2D2D 
+ 132              	.LC3:
+ 133 0077 4D617820 		.ascii	"Max Ch                %4i\012\000"
+ 133      43682020 
+ 133      20202020 
+ 133      20202020 
+ 133      20202020 
+ 134              	.LC4:
+ 135 0092 4D617820 		.ascii	"Max Networks          %4i\012\000"
+ 135      4E657477 
+ 135      6F726B73 
+ 135      20202020 
+ 135      20202020 
+ 136              	.LC5:
+ 137 00ad 5374616E 		.ascii	"Standard Opts         0x%02x\012\000"
+ 137      64617264 
+ 137      204F7074 
+ 137      73202020 
+ 137      20202020 
+ 138              	.LC6:
+ 139 00cb 41647661 		.ascii	"Advanced Opts1        0x%02x \000"
+ 139      6E636564 
+ 139      204F7074 
+ 139      73312020 
+ 139      20202020 
+ 140              	.LC7:
+ 141 00e9 5B4E4554 		.ascii	"[NETWORK_EN] \000"
+ 141      574F524B 
+ 141      5F454E5D 
+ 141      2000
+ 142              	.LC8:
+ 143 00f7 5B534552 		.ascii	"[SERIAL_NUMBER_EN] \000"
+ 143      49414C5F 
+ 143      4E554D42 
+ 143      45525F45 
+ 143      4E5D2000 
+ 144              	.LC9:
+ 145 010b 5B504552 		.ascii	"[PER_CHANNEL_TX_POWER_EN] \000"
+ 145      5F434841 
+ 145      4E4E454C 
+ 145      5F54585F 
+ 145      504F5745 
+ 146              	.LC10:
+ 147 0126 5B4C4F57 		.ascii	"[LOW_PRIORITY_SEARCH_EN] \000"
+ 147      5F505249 
+ 147      4F524954 
+ 147      595F5345 
+ 147      41524348 
+ 148              	.LC11:
+ 149 0140 5B53454E 		.ascii	"[SENSRCORE_EN] \000"
+ 149      5352434F 
+ 149      52455F45 
+ 149      4E5D2000 
+ 150              	.LC12:
+ 151 0150 5B534541 		.ascii	"[SEARCH_LIST_EN] \000"
+ 151      5243485F 
+ 151      4C495354 
+ 151      5F454E5D 
+ 151      2000
+ 152              	.LC13:
+ 153 0162 0A416476 		.ascii	"\012Advanced Opts2        0x%02x\012\000"
+ 153      616E6365 
+ 153      64204F70 
+ 153      74733220 
+ 153      20202020 
+ 154              	.LC14:
+ 155 0181 4D617820 		.ascii	"Max Data Ch           %4i\012\012\000"
+ 155      44617461 
+ 155      20436820 
+ 155      20202020 
+ 155      20202020 
+ 156              		.text
+ 157              		.align	2
+ 158              		.global	ANT_cfgCapabilties
+ 160              	ANT_cfgCapabilties:
+ 161              	.LFB5:
+ 162              		.loc 1 102 0
+ 163              		@ Function supports interworking.
+ 164              		@ args = 0, pretend = 0, frame = 0
+ 165              		@ frame_needed = 0, uses_anonymous_args = 0
+ 166              	.LVL13:
+ 167 00c4 10402DE9 		stmfd	sp!, {r4, lr}
+ 168              	.LCFI1:
+ 169              		.loc 1 103 0
+ 170 00c8 0030A0E3 		mov	r3, #0
+ 171 00cc 003081E5 		str	r3, [r1, #0]
+ 172 00d0 043081E5 		str	r3, [r1, #4]
+ 173              		.loc 1 105 0
+ 174 00d4 0030D0E5 		ldrb	r3, [r0, #0]	@ zero_extendqisi2
+ 175 00d8 0030C1E5 		strb	r3, [r1, #0]
+ 176              		.loc 1 106 0
+ 177 00dc 0130D0E5 		ldrb	r3, [r0, #1]	@ zero_extendqisi2
+ 178 00e0 0130C1E5 		strb	r3, [r1, #1]
+ 179              		.loc 1 107 0
+ 180 00e4 0230D0E5 		ldrb	r3, [r0, #2]	@ zero_extendqisi2
+ 181 00e8 0230C1E5 		strb	r3, [r1, #2]
+ 182              		.loc 1 108 0
+ 183 00ec 0330D0E5 		ldrb	r3, [r0, #3]	@ zero_extendqisi2
+ 184              		.loc 1 102 0
+ 185 00f0 FF2002E2 		and	r2, r2, #255
+ 186              	.LVL14:
+ 187              		.loc 1 108 0
+ 188 00f4 0330C1E5 		strb	r3, [r1, #3]
+ 189              		.loc 1 110 0
+ 190 00f8 060052E3 		cmp	r2, #6
+ 191              		.loc 1 112 0
+ 192 00fc 0430D005 		ldreqb	r3, [r0, #4]	@ zero_extendqisi2
+ 193 0100 0430C105 		streqb	r3, [r1, #4]
+ 194              		.loc 1 113 0
+ 195 0104 0530D005 		ldreqb	r3, [r0, #5]	@ zero_extendqisi2
+ 196              		.loc 1 118 0
+ 197 0108 C4009FE5 		ldr	r0, .L25
+ 198              	.LVL15:
+ 199              		.loc 1 113 0
+ 200 010c 0530C105 		streqb	r3, [r1, #5]
+ 201              		.loc 1 102 0
+ 202 0110 0140A0E1 		mov	r4, r1
+ 203              		.loc 1 118 0
+ 204 0114 FEFFFFEB 		bl	puts
+ 205              	.LVL16:
+ 206              		.loc 1 119 0
+ 207 0118 B8009FE5 		ldr	r0, .L25+4
+ 208 011c FEFFFFEB 		bl	puts
+ 209              		.loc 1 120 0
+ 210 0120 0010D4E5 		ldrb	r1, [r4, #0]	@ zero_extendqisi2
+ 211 0124 B0009FE5 		ldr	r0, .L25+8
+ 212 0128 FEFFFFEB 		bl	printf
+ 213              		.loc 1 121 0
+ 214 012c 0110D4E5 		ldrb	r1, [r4, #1]	@ zero_extendqisi2
+ 215 0130 A8009FE5 		ldr	r0, .L25+12
+ 216 0134 FEFFFFEB 		bl	printf
+ 217              		.loc 1 122 0
+ 218 0138 0210D4E5 		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+ 219 013c A0009FE5 		ldr	r0, .L25+16
+ 220 0140 FEFFFFEB 		bl	printf
+ 221              		.loc 1 123 0
+ 222 0144 9C009FE5 		ldr	r0, .L25+20
+ 223 0148 0310D4E5 		ldrb	r1, [r4, #3]	@ zero_extendqisi2
+ 224 014c FEFFFFEB 		bl	printf
+ 225              		.loc 1 125 0
+ 226 0150 0330D4E5 		ldrb	r3, [r4, #3]	@ zero_extendqisi2
+ 227 0154 020013E3 		tst	r3, #2
+ 228 0158 8C009F15 		ldrne	r0, .L25+24
+ 229 015c FEFFFF1B 		blne	printf
+ 230              	.L18:
+ 231              		.loc 1 126 0
+ 232 0160 0330D4E5 		ldrb	r3, [r4, #3]	@ zero_extendqisi2
+ 233 0164 080013E3 		tst	r3, #8
+ 234 0168 80009F15 		ldrne	r0, .L25+28
+ 235 016c FEFFFF1B 		blne	printf
+ 236              	.L19:
+ 237              		.loc 1 127 0
+ 238 0170 0330D4E5 		ldrb	r3, [r4, #3]	@ zero_extendqisi2
+ 239 0174 100013E3 		tst	r3, #16
+ 240 0178 74009F15 		ldrne	r0, .L25+32
+ 241 017c FEFFFF1B 		blne	printf
+ 242              	.L20:
+ 243              		.loc 1 128 0
+ 244 0180 0330D4E5 		ldrb	r3, [r4, #3]	@ zero_extendqisi2
+ 245 0184 200013E3 		tst	r3, #32
+ 246 0188 68009F15 		ldrne	r0, .L25+36
+ 247 018c FEFFFF1B 		blne	printf
+ 248              	.L21:
+ 249              		.loc 1 129 0
+ 250 0190 0330D4E5 		ldrb	r3, [r4, #3]	@ zero_extendqisi2
+ 251 0194 400013E3 		tst	r3, #64
+ 252 0198 5C009F15 		ldrne	r0, .L25+40
+ 253 019c FEFFFF1B 		blne	printf
+ 254              	.L22:
+ 255              		.loc 1 130 0
+ 256 01a0 D330D4E1 		ldrsb	r3, [r4, #3]
+ 257 01a4 000053E3 		cmp	r3, #0
+ 258 01a8 50009FB5 		ldrlt	r0, .L25+44
+ 259 01ac FEFFFFBB 		bllt	printf
+ 260              	.L23:
+ 261              		.loc 1 132 0
+ 262 01b0 0410D4E5 		ldrb	r1, [r4, #4]	@ zero_extendqisi2
+ 263 01b4 48009FE5 		ldr	r0, .L25+48
+ 264 01b8 FEFFFFEB 		bl	printf
+ 265              		.loc 1 133 0
+ 266 01bc 0210D4E5 		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+ 267 01c0 40009FE5 		ldr	r0, .L25+52
+ 268 01c4 FEFFFFEB 		bl	printf
+ 269              		.loc 1 138 0
+ 270 01c8 0000A0E3 		mov	r0, #0
+ 271 01cc 1040BDE8 		ldmfd	sp!, {r4, lr}
+ 272 01d0 1EFF2FE1 		bx	lr
+ 273              	.L26:
+ 274              		.align	2
+ 275              	.L25:
+ 276 01d4 40000000 		.word	.LC1
+ 277 01d8 5C000000 		.word	.LC2
+ 278 01dc 77000000 		.word	.LC3
+ 279 01e0 92000000 		.word	.LC4
+ 280 01e4 AD000000 		.word	.LC5
+ 281 01e8 CB000000 		.word	.LC6
+ 282 01ec E9000000 		.word	.LC7
+ 283 01f0 F7000000 		.word	.LC8
+ 284 01f4 0B010000 		.word	.LC9
+ 285 01f8 26010000 		.word	.LC10
+ 286 01fc 40010000 		.word	.LC11
+ 287 0200 50010000 		.word	.LC12
+ 288 0204 62010000 		.word	.LC13
+ 289 0208 81010000 		.word	.LC14
+ 290              	.LFE5:
+ 292              		.section	.rodata.str1.1
+ 293              	.LC15:
+ 294 019d 74786461 		.ascii	"txda: \000"
+ 294      3A2000
+ 295              	.LC16:
+ 296 01a4 25303278 		.ascii	"%02x \000"
+ 296      2000
+ 297              	.LC17:
+ 298 01aa 0A00     		.ascii	"\012\000"
+ 299              		.text
+ 300              		.align	2
+ 301              		.global	ANT_tx
+ 303              	ANT_tx:
+ 304              	.LFB4:
+ 305              		.loc 1 71 0
+ 306              		@ Function supports interworking.
+ 307              		@ args = 0, pretend = 0, frame = 0
+ 308              		@ frame_needed = 0, uses_anonymous_args = 0
+ 309              	.LVL17:
+ 310 020c 70402DE9 		stmfd	sp!, {r4, r5, r6, lr}
+ 311              	.LCFI2:
+ 312              		.loc 1 74 0
+ 313 0210 94009FE5 		ldr	r0, .L33
+ 314              	.LVL18:
+ 315              		.loc 1 71 0
+ 316 0214 0150A0E1 		mov	r5, r1
+ 317 0218 0260A0E1 		mov	r6, r2
+ 318              		.loc 1 74 0
+ 319 021c 0040A0E3 		mov	r4, #0
+ 320              	.LVL19:
+ 321 0220 FEFFFFEB 		bl	write_debug
+ 322              	.LVL20:
+ 323 0224 020000EA 		b	.L28
+ 324              	.L29:
+ 325              		.loc 1 77 0
+ 326 0228 0410D5E7 		ldrb	r1, [r5, r4]	@ zero_extendqisi2
+ 327 022c FEFFFFEB 		bl	write_debug
+ 328              		.loc 1 75 0
+ 329 0230 014084E2 		add	r4, r4, #1
+ 330              	.L28:
+ 331 0234 060054E1 		cmp	r4, r6
+ 332              		.loc 1 77 0
+ 333 0238 70009FE5 		ldr	r0, .L33+4
+ 334              		.loc 1 75 0
+ 335 023c F9FFFFBA 		blt	.L29
+ 336              		.loc 1 79 0
+ 337 0240 6C009FE5 		ldr	r0, .L33+8
+ 338 0244 FEFFFFEB 		bl	write_debug
+ 339              		.loc 1 86 0
+ 340 0248 0500A0E1 		mov	r0, r5
+ 341 024c FEFFFFEB 		bl	rprintf
+ 342 0250 0040A0E3 		mov	r4, #0
+ 343              	.LVL21:
+ 344              	.L30:
+ 345              	.LBB6:
+ 346              		.loc 1 90 0
+ 347 0254 0110A0E3 		mov	r1, #1
+ 348 0258 0000A0E3 		mov	r0, #0
+ 349 025c FEFFFFEB 		bl	stat
+ 350              		.loc 1 91 0
+ 351 0260 3200A0E3 		mov	r0, #50
+ 352 0264 FEFFFFEB 		bl	delay_ms
+ 353              		.loc 1 92 0
+ 354 0268 0000A0E3 		mov	r0, #0
+ 355 026c 0010A0E1 		mov	r1, r0
+ 356 0270 FEFFFFEB 		bl	stat
+ 357              		.loc 1 93 0
+ 358 0274 0100A0E3 		mov	r0, #1
+ 359 0278 0010A0E1 		mov	r1, r0
+ 360 027c FEFFFFEB 		bl	stat
+ 361              		.loc 1 94 0
+ 362 0280 3200A0E3 		mov	r0, #50
+ 363 0284 FEFFFFEB 		bl	delay_ms
+ 364              		.loc 1 88 0
+ 365 0288 014084E2 		add	r4, r4, #1
+ 366              		.loc 1 95 0
+ 367 028c 0100A0E3 		mov	r0, #1
+ 368 0290 0010A0E3 		mov	r1, #0
+ 369 0294 FEFFFFEB 		bl	stat
+ 370              		.loc 1 88 0
+ 371 0298 0A0054E3 		cmp	r4, #10
+ 372 029c ECFFFF1A 		bne	.L30
+ 373              	.LBE6:
+ 374              		.loc 1 99 0
+ 375 02a0 0000A0E3 		mov	r0, #0
+ 376 02a4 7040BDE8 		ldmfd	sp!, {r4, r5, r6, lr}
+ 377 02a8 1EFF2FE1 		bx	lr
+ 378              	.L34:
+ 379              		.align	2
+ 380              	.L33:
+ 381 02ac 9D010000 		.word	.LC15
+ 382 02b0 A4010000 		.word	.LC16
+ 383 02b4 AA010000 		.word	.LC17
+ 384              	.LFE4:
+ 386              		.section	.rodata.str1.1
+ 387              	.LC18:
+ 388 01ac 545800   		.ascii	"TX\000"
+ 389              		.text
+ 390              		.align	2
+ 391              		.global	ANT_sendStr
+ 393              	ANT_sendStr:
+ 394              	.LFB3:
+ 395              		.loc 1 49 0
+ 396              		@ Function supports interworking.
+ 397              		@ args = 0, pretend = 0, frame = 16
+ 398              		@ frame_needed = 0, uses_anonymous_args = 0
+ 399              	.LVL22:
+ 400 02b8 04E02DE5 		str	lr, [sp, #-4]!
+ 401              	.LCFI3:
+ 402              		.loc 1 54 0
+ 403 02bc 012040E2 		sub	r2, r0, #1
+ 404              		.loc 1 49 0
+ 405 02c0 10D04DE2 		sub	sp, sp, #16
+ 406              	.LCFI4:
+ 407              		.loc 1 53 0
+ 408 02c4 5B30E0E3 		mvn	r3, #91
+ 409              		.loc 1 54 0
+ 410 02c8 02C0A0E3 		mov	ip, #2
+ 411              	.LVL23:
+ 412 02cc 0320CDE5 		strb	r2, [sp, #3]
+ 413              		.loc 1 53 0
+ 414 02d0 0230CDE5 		strb	r3, [sp, #2]
+ 415              		.loc 1 56 0
+ 416 02d4 010080E2 		add	r0, r0, #1
+ 417              	.LVL24:
+ 418              		.loc 1 54 0
+ 419 02d8 0020A0E3 		mov	r2, #0
+ 420              		.loc 1 58 0
+ 421 02dc 0CE08DE0 		add	lr, sp, ip
+ 422              	.LVL25:
+ 423 02e0 030000EA 		b	.L36
+ 424              	.LVL26:
+ 425              	.L37:
+ 426 02e4 0230D1E7 		ldrb	r3, [r1, r2]	@ zero_extendqisi2
+ 427              		.loc 1 56 0
+ 428 02e8 012082E2 		add	r2, r2, #1
+ 429              		.loc 1 58 0
+ 430 02ec 0C30CEE7 		strb	r3, [lr, ip]
+ 431              		.loc 1 56 0
+ 432 02f0 01C08CE2 		add	ip, ip, #1
+ 433              	.L36:
+ 434 02f4 0C0050E1 		cmp	r0, ip
+ 435 02f8 F9FFFFAA 		bge	.L37
+ 436              	.LBB7:
+ 437              	.LBB8:
+ 438              		.loc 1 161 0
+ 439 02fc 10108DE2 		add	r1, sp, #16
+ 440              	.LVL27:
+ 441 0300 0EE071E5 		ldrb	lr, [r1, #-14]!	@ zero_extendqisi2
+ 442              	.LVL28:
+ 443 0304 0120A0E3 		mov	r2, #1
+ 444              	.LVL29:
+ 445              	.L38:
+ 446              		.loc 1 164 0
+ 447 0308 0230D1E7 		ldrb	r3, [r1, r2]	@ zero_extendqisi2
+ 448              		.loc 1 163 0
+ 449 030c 012082E2 		add	r2, r2, #1
+ 450 0310 0C0052E1 		cmp	r2, ip
+ 451              		.loc 1 164 0
+ 452 0314 03E02EE0 		eor	lr, lr, r3
+ 453              	.LVL30:
+ 454              		.loc 1 163 0
+ 455 0318 FAFFFFBA 		blt	.L38
+ 456              	.LBE8:
+ 457              	.LBE7:
+ 458              		.loc 1 61 0
+ 459 031c 10008DE2 		add	r0, sp, #16
+ 460 0320 0C3080E0 		add	r3, r0, ip
+ 461              		.loc 1 62 0
+ 462 0324 01208CE2 		add	r2, ip, #1
+ 463              	.LVL31:
+ 464              		.loc 1 61 0
+ 465 0328 0EE043E5 		strb	lr, [r3, #-14]
+ 466              		.loc 1 62 0
+ 467 032c 18009FE5 		ldr	r0, .L41
+ 468 0330 FEFFFFEB 		bl	queue_add
+ 469              	.LVL32:
+ 470              		.loc 1 64 0
+ 471 0334 14009FE5 		ldr	r0, .L41+4
+ 472 0338 FEFFFFEB 		bl	perror
+ 473              		.loc 1 67 0
+ 474 033c 0000A0E3 		mov	r0, #0
+ 475 0340 10D08DE2 		add	sp, sp, #16
+ 476 0344 04E09DE4 		ldr	lr, [sp], #4
+ 477 0348 1EFF2FE1 		bx	lr
+ 478              	.L42:
+ 479              		.align	2
+ 480              	.L41:
+ 481 034c 00000000 		.word	txQueue
+ 482 0350 AC010000 		.word	.LC18
+ 483              	.LFE3:
+ 485              		.align	2
+ 486              		.global	ANT_send
+ 488              	ANT_send:
+ 489              	.LFB2:
+ 490              		.loc 1 24 0
+ 491              		@ Function supports interworking.
+ 492              		@ args = 4, pretend = 16, frame = 16
+ 493              		@ frame_needed = 0, uses_anonymous_args = 1
+ 494              	.LVL33:
+ 495 0354 0F002DE9 		stmfd	sp!, {r0, r1, r2, r3}
+ 496              	.LCFI5:
+ 497 0358 04E02DE5 		str	lr, [sp, #-4]!
+ 498              	.LCFI6:
+ 499 035c 10D04DE2 		sub	sp, sp, #16
+ 500              	.LCFI7:
+ 501              		.loc 1 24 0
+ 502 0360 14109DE5 		ldr	r1, [sp, #20]
+ 503              		.loc 1 32 0
+ 504 0364 5B30E0E3 		mvn	r3, #91
+ 505              		.loc 1 33 0
+ 506 0368 012041E2 		sub	r2, r1, #1
+ 507 036c 0200A0E3 		mov	r0, #2
+ 508              	.LVL34:
+ 509 0370 0320CDE5 		strb	r2, [sp, #3]
+ 510              		.loc 1 32 0
+ 511 0374 0230CDE5 		strb	r3, [sp, #2]
+ 512              		.loc 1 35 0
+ 513 0378 011081E2 		add	r1, r1, #1
+ 514              		.loc 1 24 0
+ 515 037c 18208DE2 		add	r2, sp, #24
+ 516              	.LVL35:
+ 517              		.loc 1 37 0
+ 518 0380 00C08DE0 		add	ip, sp, r0
+ 519              	.LVL36:
+ 520 0384 020000EA 		b	.L44
+ 521              	.LVL37:
+ 522              	.L45:
+ 523 0388 043092E4 		ldr	r3, [r2], #4
+ 524 038c 0030CCE7 		strb	r3, [ip, r0]
+ 525              		.loc 1 35 0
+ 526 0390 010080E2 		add	r0, r0, #1
+ 527              	.L44:
+ 528 0394 010050E1 		cmp	r0, r1
+ 529 0398 FAFFFFDA 		ble	.L45
+ 530              	.LBB9:
+ 531              	.LBB10:
+ 532              		.loc 1 161 0
+ 533 039c 10108DE2 		add	r1, sp, #16
+ 534 03a0 0EC071E5 		ldrb	ip, [r1, #-14]!	@ zero_extendqisi2
+ 535              	.LVL38:
+ 536 03a4 0120A0E3 		mov	r2, #1
+ 537              	.LVL39:
+ 538              	.L46:
+ 539              		.loc 1 164 0
+ 540 03a8 0230D1E7 		ldrb	r3, [r1, r2]	@ zero_extendqisi2
+ 541              		.loc 1 163 0
+ 542 03ac 012082E2 		add	r2, r2, #1
+ 543 03b0 000052E1 		cmp	r2, r0
+ 544              		.loc 1 164 0
+ 545 03b4 03C02CE0 		eor	ip, ip, r3
+ 546              	.LVL40:
+ 547              		.loc 1 163 0
+ 548 03b8 FAFFFFBA 		blt	.L46
+ 549              	.LBE10:
+ 550              	.LBE9:
+ 551              		.loc 1 40 0
+ 552 03bc 10E08DE2 		add	lr, sp, #16
+ 553 03c0 00308EE0 		add	r3, lr, r0
+ 554              		.loc 1 42 0
+ 555 03c4 012080E2 		add	r2, r0, #1
+ 556              	.LVL41:
+ 557              		.loc 1 40 0
+ 558 03c8 0EC043E5 		strb	ip, [r3, #-14]
+ 559              		.loc 1 42 0
+ 560 03cc 14009FE5 		ldr	r0, .L49
+ 561              	.LVL42:
+ 562 03d0 FEFFFFEB 		bl	queue_add
+ 563              	.LVL43:
+ 564              		.loc 1 45 0
+ 565 03d4 0000A0E3 		mov	r0, #0
+ 566 03d8 10D08DE2 		add	sp, sp, #16
+ 567 03dc 04E09DE4 		ldr	lr, [sp], #4
+ 568 03e0 10D08DE2 		add	sp, sp, #16
+ 569 03e4 1EFF2FE1 		bx	lr
+ 570              	.L50:
+ 571              		.align	2
+ 572              	.L49:
+ 573 03e8 00000000 		.word	txQueue
+ 574              	.LFE2:
+ 576              		.comm	rxQueue,4,4
+ 577              		.comm	txQueue,4,4
+ 704              	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 antlib.c
+     /tmp/cc8PoV2t.s:13     .text:0000000000000000 checkSum
+     /tmp/cc8PoV2t.s:23     .text:0000000000000000 $a
+     /tmp/cc8PoV2t.s:54     .text:0000000000000028 hstr2hex
+     /tmp/cc8PoV2t.s:124    .text:00000000000000c0 $d
+     /tmp/cc8PoV2t.s:160    .text:00000000000000c4 ANT_cfgCapabilties
+     /tmp/cc8PoV2t.s:167    .text:00000000000000c4 $a
+     /tmp/cc8PoV2t.s:276    .text:00000000000001d4 $d
+     /tmp/cc8PoV2t.s:303    .text:000000000000020c ANT_tx
+     /tmp/cc8PoV2t.s:310    .text:000000000000020c $a
+     /tmp/cc8PoV2t.s:381    .text:00000000000002ac $d
+     /tmp/cc8PoV2t.s:393    .text:00000000000002b8 ANT_sendStr
+     /tmp/cc8PoV2t.s:400    .text:00000000000002b8 $a
+     /tmp/cc8PoV2t.s:481    .text:000000000000034c $d
+                            *COM*:0000000000000004 txQueue
+     /tmp/cc8PoV2t.s:488    .text:0000000000000354 ANT_send
+     /tmp/cc8PoV2t.s:495    .text:0000000000000354 $a
+     /tmp/cc8PoV2t.s:573    .text:00000000000003e8 $d
+                            *COM*:0000000000000004 rxQueue
+
+UNDEFINED SYMBOLS
+printf
+exit
+puts
+write_debug
+rprintf
+stat
+delay_ms
+queue_add
+perror
