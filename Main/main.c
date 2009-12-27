@@ -111,6 +111,9 @@ void fat_initialize(void);
 void write_debug(char *debug);
 void setup_ant(void);
 void delay_ms(int count);
+int ANT_send(int args, ... );
+UCHAR checkSum(UCHAR *data, int length);
+
 
 /*******************************************************
  * 		     	MAIN
