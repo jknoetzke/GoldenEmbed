@@ -56,8 +56,9 @@ short RX_in = 0;
 char get_frame = 0;
 
 signed int stringSize;
-struct fat16_file_struct* handle;
-struct fat16_file_struct * fd;
+struct fat16_file_struct * handle; //Actual Log File.
+struct fat16_file_struct * fd; //Used for LOGCON only
+struct fat16_file_struct * dbgfd; //Used for Debug
 char stringBuf[256];
 
 // Default Settings
@@ -113,7 +114,7 @@ void setup_ant(void);
 void delay_ms(int count);
 int ANT_send(int args, ... );
 UCHAR checkSum(UCHAR *data, int length);
-
+void flashBoobies(int num_of_times);
 
 /*******************************************************
  * 		     	MAIN
@@ -169,16 +170,9 @@ int main (void)
 	}
 	
 	handle = root_open_new(name);
-		
 
 	sd_raw_sync();	
 
-	char *startLog = "Logging Hello World!\n\r";
-	stringSize = strlen(startLog);
-	fat16_write_file(fd, (unsigned char*)startLog, stringSize);
-	sd_raw_sync();
-    
-	
 	if(mode == 0){ mode_0(); }
 	else if(mode == 1){ mode_1(); }
 	else if(mode == 2){ mode_2(); }
@@ -956,13 +950,23 @@ void statLight(int statLightnum, int onoff)
 
 void Log_init(void)
 {
-	int x, mark = 0, ind = 0;
+	int x, mark = 0, ind = 0, count = 0;
 	char temp, temp2 = 0, safety = 0;
-//	signed char handle;
+	char name[32];
+
+	count++;
+	string_printf(name,"DEBUG%02d.txt",count);
+	while(root_file_exists(name))
+	{
+		count++;
+		string_printf(name,"LOG%02d.txt",count);
+	}
+	
+	dbgfd = root_open_new(name);
 
 	if(root_file_exists("LOGCON.txt"))
 	{
-		//rprintf("\n\rFound LOGcon.txt\n");
+		write_debug("\n\rFound LOGcon.txt\n");
 		fd = root_open("LOGCON.txt");
 		stringSize = fat16_read_file(fd, (unsigned char *)stringBuf, 512);
 		stringBuf[stringSize] = '\0';
@@ -970,11 +974,11 @@ void Log_init(void)
 	}
 	else
 	{
-		//rprintf("Couldn't find LOGcon.txt, creating...\n");
+		write_debug("Couldn't find LOGcon.txt, creating...\n");
 		fd = root_open_new("LOGCON.txt");
 		if(fd == NULL)
 		{
-		 	rprintf("Error creating LOGCON.txt, locking up...\n\r");
+		 	write_debug("Error creating LOGCON.txt, locking up...\n\r");
 		 	while(1)
 			{
 				statLight(0,ON);
@@ -985,6 +989,10 @@ void Log_init(void)
 				statLight(1,OFF);
 			}
 		}
+		strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 4\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
+		stringSize = strlen(stringBuf);
+		fat16_write_file(fd, (unsigned char*)stringBuf, stringSize);
+		sd_raw_sync();
 
 	}
 
@@ -1345,19 +1353,23 @@ void fat_initialize(void)
 void write_debug(char *debug)
 {
 	stringSize = strlen(debug);
-	fat16_write_file(fd, (unsigned char*)debug, stringSize);
+	fat16_write_file(dbgfd, (unsigned char*)debug, stringSize);
 	sd_raw_sync();
-    
+}
+
+void flashBoobies(int num_of_times)
+{
     // Flash Status Lights
-	for(int i = 0; i < 5; i++)
-	{
-		statLight(0,ON);
-		delay_ms(50);
-		statLight(0,OFF);
-		statLight(1,ON);
-		delay_ms(50);
-		statLight(1,OFF);
-	}
+    for(int i = 0; i < num_of_times; i++)
+    {
+	statLight(0,ON);
+	statLight(1,ON);
+	delay_ms(100);
+	statLight(0,OFF);
+	statLight(1,OFF);
+        delay_ms(100); 
+    }
+
 }
 
 void delay_ms(int count)
@@ -1399,7 +1411,6 @@ void setup_ant(void)
 
 int ANT_send(int args, ... )
 {
-       write_debug("Sending to chip..\r\n");
 	va_list ap;
 	int i; 	
 	UCHAR buf[MAXMSG];
@@ -1418,16 +1429,8 @@ int ANT_send(int args, ... )
 	buf[i] = checkSum(buf, i);  // Count sync byte + checksum
 
         rprintf("%c", buf);	
-        for(int i=0; i < 2; i++)
-        {
-           statLight(0,ON);
-           delay_ms(50);
-           statLight(0,OFF);
-           statLight(1,ON);
-           delay_ms(50);
-           statLight(1,OFF);
-        }
-	
+        flashBoobies(1);
+    	
 	return RETURN_SUCCESS;
 }
 
@@ -1452,63 +1455,6 @@ int ANT_sendStr(int len, UCHAR *data)
 	
 	return RETURN_SUCCESS;
 }
-
-
-int ANT_tx(int _fd, UCHAR *data, int length)
-{
-        rprintf(data); 
-        
-        for(int i=0; i < 2; i++)
-        {
-           statLight(0,ON);
-           delay_ms(50);
-           statLight(0,OFF);
-           statLight(1,ON);
-           delay_ms(50);
-           statLight(1,OFF);
-        }
-     return 0;
-}
-/*
-int ANT_cfgCapabilties(UCHAR *data, cfg_capabilities *cfg, UCHAR size)
-{
-	bzero(cfg, sizeof(cfg_capabilities));
-	
-	cfg->maxChannels	= data[0];	
-	cfg->maxNetworks	= data[1];
-	cfg->stdOptions		= data[2];
-	cfg->advOptions[0]	= data[3];
-	
-	if (size == 6) // Expect size 7 for this msg type
-	{
-		cfg->advOptions[1] = data[4];
-		cfg->maxDataChannels = data[5];
-	}
-	
-	if (DEBUG)
-	{
-		printf("\n[DEBUG] Device Capabilites\n");
-		printf("--------------------------\n");
-		printf("Max Ch                %4i\n", cfg->maxChannels);
-		printf("Max Networks          %4i\n", cfg->maxNetworks);
-		printf("Standard Opts         0x%02x\n", cfg->stdOptions);
-		printf("Advanced Opts1        0x%02x ", cfg->advOptions[0]);
-		
-		if (cfg->advOptions[0] & 0x02) printf("[NETWORK_EN] ");
-		if (cfg->advOptions[0] & 0x08) printf("[SERIAL_NUMBER_EN] ");
-		if (cfg->advOptions[0] & 0x10) printf("[PER_CHANNEL_TX_POWER_EN] ");
-		if (cfg->advOptions[0] & 0x20) printf("[LOW_PRIORITY_SEARCH_EN] ");
-		if (cfg->advOptions[0] & 0x40) printf("[SENSRCORE_EN] ");
-		if (cfg->advOptions[0] & 0x80) printf("[SEARCH_LIST_EN] ");
-				
-		printf("\nAdvanced Opts2        0x%02x\n", cfg->advOptions[1]);
-		printf("Max Data Ch           %4i\n\n", cfg->stdOptions);
-	}
-	
-	return RETURN_SUCCESS;
-	
-}
-*/
 
 int hstr2hex(UCHAR *hex, char *hexstr, int size)
 {
