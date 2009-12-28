@@ -143,11 +143,11 @@ int main (void)
 	int i;
 	char name[32];
 	int count = 0;
-	
+
 	enableFIQ();
-	
+
 	Initialize();
-	
+
 	fat_initialize();		
 
 	setup_uart0(9600, 0);
@@ -162,7 +162,7 @@ int main (void)
 		delay_ms(50);
 		statLight(1,OFF);
 	}
-	
+
 	Log_init();
 
 	count++;
@@ -186,7 +186,7 @@ int main (void)
 		}
 		string_printf(name,"LOG%02d.txt",count);
 	}
-	
+
 	handle = root_open_new(name);
 
 	sd_raw_sync();	
@@ -195,7 +195,7 @@ int main (void)
 	else if(mode == 1){ mode_1(); }
 	else if(mode == 2){ mode_2(); }
 
-    	return 0;
+	return 0;
 }
 
 
@@ -208,7 +208,7 @@ int main (void)
 void Initialize(void)
 {
 	rprintf_devopen(putc_serial0);
-	
+
 	PINSEL0 = 0xCF351505;
 	PINSEL1 = 0x15441801;
 	IODIR0 |= 0x00000884;
@@ -233,7 +233,7 @@ static void UART0ISR(void)
 	if(RX_in < 512)
 	{
 		RX_array1[RX_in] = U0RBR;
-	
+
 		RX_in++;
 
 		if(RX_in == 512) log_array1 = 1;
@@ -254,7 +254,7 @@ static void UART0ISR(void)
 	temp = U0IIR; // Have to read this to clear the interrupt 
 
 	VICVectAddr = 0;
-	
+
 }
 
 static void UART0ISR_2(void)
@@ -263,7 +263,7 @@ static void UART0ISR_2(void)
 	temp = U0RBR;
 
 	if(temp == trig){ get_frame = 1; }
-	
+
 	if(get_frame)
 	{
 		if(RX_in < frame)
@@ -299,7 +299,7 @@ static void UART0ISR_2(void)
 
 	VICVectAddr = 0;
 }
-		
+
 static void MODE2ISR(void)
 {
 	int temp = 0, temp2 = 0, ind = 0;
@@ -309,7 +309,7 @@ static void MODE2ISR(void)
 
 
 	T0IR = 1; // reset TMR0 interrupt
-	
+
 	for(j = 0; j < 50; j++)
 	{
 		q[j] = 0;
@@ -369,7 +369,7 @@ static void MODE2ISR(void)
 		{
 			a = ((short)temp2 & 0xFF00) / 0x00000100;
 			q[ind] = (char)a;
-			
+
 			q[ind+1]  = (char)temp2 & 0xFF;
 			ind += 2;
 			temp = 0;
@@ -428,7 +428,7 @@ static void MODE2ISR(void)
 		{
 			a = ((short)temp2 & 0xFF00) / 0x00000100;
 			q[ind] = (char)a;
-			
+
 			q[ind+1]  = (char)temp2 & 0xFF;
 			ind += 2;
 			temp = 0;
@@ -487,7 +487,7 @@ static void MODE2ISR(void)
 		{
 			a = ((short)temp2 & 0xFF00) / 0x00000100;
 			q[ind] = (char)a;
-			
+
 			q[ind+1]  = (char)temp2 & 0xFF;
 			ind += 2;
 			temp = 0;
@@ -546,7 +546,7 @@ static void MODE2ISR(void)
 		{
 			a = ((short)temp2 & 0xFF00) / 0x00000100;
 			q[ind] = (char)a;
-			
+
 			q[ind+1]  = (char)temp2 & 0xFF;
 			ind += 2;
 			temp = 0;
@@ -605,7 +605,7 @@ static void MODE2ISR(void)
 		{
 			a = ((short)temp2 & 0xFF00) / 0x00000100;
 			q[ind] = (char)a;
-			
+
 			q[ind+1]  = (char)temp2 & 0xFF;
 			ind += 2;
 			temp = 0;
@@ -664,7 +664,7 @@ static void MODE2ISR(void)
 		{
 			a = ((short)temp2 & 0xFF00) / 0x00000100;
 			q[ind] = (char)a;
-			
+
 			q[ind+1]  = (char)temp2 & 0xFF;
 			ind += 2;
 			temp = 0;
@@ -723,7 +723,7 @@ static void MODE2ISR(void)
 		{
 			a = ((short)temp2 & 0xFF00) / 0x00000100;
 			q[ind] = (char)a;
-			
+
 			q[ind+1]  = (char)temp2 & 0xFF;
 			ind += 2;
 			temp = 0;
@@ -782,13 +782,13 @@ static void MODE2ISR(void)
 		{
 			a = ((short)temp2 & 0xFF00) / 0x00000100;
 			q[ind] = (char)a;
-			
+
 			q[ind+1]  = (char)temp2 & 0xFF;
 			ind += 2;
 			temp = 0;
 		}
 	}
-	
+
 	for(j = 0; j < ind; j++)
 	{
 		if(RX_in < 512)
@@ -820,11 +820,11 @@ static void MODE2ISR(void)
 	}
 	else if(RX_in >= 512)
 	{
-		
+
 		if(asc == 'N') RX_array2[RX_in - 512] = '$';
 		else if(asc == 'Y'){ RX_array2[RX_in - 512] = 13; }
 		RX_in++;
-		
+
 		if(RX_in == 1024)
 		{
 			log_array2 = 1;
@@ -841,11 +841,11 @@ static void MODE2ISR(void)
 	}
 	else if(RX_in >= 512)
 	{
-		
+
 		if(asc == 'N') RX_array2[RX_in - 512] = '$';
 		else if(asc == 'Y'){ RX_array2[RX_in - 512] = 10; }
 		RX_in++;
-		
+
 		if(RX_in == 1024)
 		{
 			log_array2 = 1;
@@ -883,7 +883,7 @@ void setup_uart0(int newbaud, char want_ints)
 {
 	baud = newbaud;
 	U0LCR = 0x83;   // 8 bits, no parity, 1 stop bit, DLAB = 1
-	
+
 	if(baud == 1200)
 	{
 		U0DLM = 0x0C;
@@ -979,7 +979,7 @@ void Log_init(void)
 		count++;
 		string_printf(name,"LOG%02d.txt",count);
 	}
-	
+
 	dbgfd = root_open_new(name);
 
 	if(root_file_exists("LOGCON.txt"))
@@ -996,8 +996,8 @@ void Log_init(void)
 		fd = root_open_new("LOGCON.txt");
 		if(fd == NULL)
 		{
-		 	write_debug("Error creating LOGCON.txt, locking up...\n\r");
-		 	while(1)
+			write_debug("Error creating LOGCON.txt, locking up...\n\r");
+			while(1)
 			{
 				statLight(0,ON);
 				delay_ms(50);
@@ -1057,7 +1057,7 @@ void Log_init(void)
 			else if(ind == 5)
 			{
 				trig = stringBuf[mark-2]; // default is $
-				
+
 				rprintf("trig = %c\n\r",trig);
 			}
 			else if(ind == 6)
@@ -1136,7 +1136,7 @@ void Log_init(void)
 		else if((temp2 == 1) && (freq > 1500)){ freq = 1500; }
 		else if((temp2 == 0)){ freq = 100; }
 	}
-	
+
 	if(safety == 'T'){ test(); }
 
 }
@@ -1148,7 +1148,7 @@ void mode_0(void) // Auto UART mode
 	setup_uart0(baud,1);
 	stringSize = 512;
 	setup_ant();
-        mode_action();
+	mode_action();
 	write_debug("Exit mode 0\n\r");
 
 }
@@ -1192,27 +1192,27 @@ void mode_action(void)
 {
 	int j;
 	write_debug("mode_action\r\n");
-        while(1)
+	while(1)
 	{
-		
+
 		if(log_array1 == 1)
 		{
 			statLight(0,ON);
 			strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 4\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
-		        stringSize = strlen(stringBuf);
+			stringSize = strlen(stringBuf);
 			if(fat16_write_file(handle,(unsigned char *)RX_array1, stringSize) < 0)
-                        {
+			{
 				while(1)
 				{
 					statLight(0,ON);
 					for(j = 0; j < 500000; j++)
-					statLight(0,OFF);
+						statLight(0,OFF);
 					statLight(1,ON);
 					for(j = 0; j < 500000; j++)
-					statLight(1,OFF);
+						statLight(1,OFF);
 				}
 			}
-			
+
 			sd_raw_sync();
 			statLight(0,OFF);
 			log_array1 = 0;
@@ -1221,21 +1221,21 @@ void mode_action(void)
 		if(log_array2 == 1)
 		{
 			statLight(1,ON);
-			
-            write_debug("About to write to a file..\r\n");
+
+			write_debug("About to write to a file..\r\n");
 			if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
 			{
 				while(1)
 				{
 					statLight(0,ON);
 					for(j = 0; j < 500000; j++)
-					statLight(0,OFF);
+						statLight(0,OFF);
 					statLight(1,ON);
 					for(j = 0; j < 500000; j++)
-					statLight(1,OFF);
+						statLight(1,OFF);
 				}
 			}
-			
+
 			sd_raw_sync();
 			statLight(1,OFF);
 			log_array2 = 0;
@@ -1286,7 +1286,7 @@ void test(void)
 		// Get AD0.3
 		AD0CR = 0x0020FF08;
 		AD_conversion(0);
-		
+
 		// Get AD0.2
 		AD0CR = 0x0020FF04;
 		AD_conversion(0);
@@ -1298,7 +1298,7 @@ void test(void)
 		// Get AD1.2
 		AD1CR = 0x0020FF04;
 		AD_conversion(1);
-		
+
 		// Get AD0.4
 		AD0CR = 0x0020FF10;
 		AD_conversion(0);
@@ -1317,7 +1317,7 @@ void test(void)
 
 	rprintf("\n\rTest complete, locking up...\n\r");
 	while(1);
-		
+
 }
 
 void AD_conversion(int regbank)
@@ -1351,7 +1351,7 @@ void AD_conversion(int regbank)
 
 	rprintf("%d", temp2);
 	rprintf("   ");
-	
+
 }
 
 void fat_initialize(void)
@@ -1377,53 +1377,53 @@ void write_debug(char *debug)
 
 void flashBoobies(int num_of_times)
 {
-    // Flash Status Lights
-    for(int i = 0; i < num_of_times; i++)
-    {
-	statLight(0,ON);
-	statLight(1,ON);
-	delay_ms(100);
-	statLight(0,OFF);
-	statLight(1,OFF);
-        delay_ms(100); 
-    }
+	// Flash Status Lights
+	for(int i = 0; i < num_of_times; i++)
+	{
+		statLight(0,ON);
+		statLight(1,ON);
+		delay_ms(100);
+		statLight(0,OFF);
+		statLight(1,OFF);
+		delay_ms(100); 
+	}
 
 }
 
 void delay_ms(int count)
 {
-    int i;
-    count *= 10000;
-    for(i = 0; i < count; i++)
-        asm volatile ("nop");
+	int i;
+	count *= 10000;
+	for(i = 0; i < count; i++)
+		asm volatile ("nop");
 }
 
 
 void setup_ant(void)
 {
-    write_debug("Setting up ANT+\r\n");
-	
-    UCHAR buf[20];
-    
-    ANT_send(1+1, MESG_SYSTEM_RESET_ID, 0x00);      
-    ANT_send(1+2, MESG_REQUEST_ID, CHAN0, MESG_CAPABILITIES_ID);
-    ANT_send(1+2, MESG_REQUEST_ID, CHAN0, 0x3D);    // ??
-    ANT_send(1+3, MESG_ASSIGN_CHANNEL_ID, CHAN0, 0x00, NET0); // chan, chtype (0=wildcard?), network
-    ANT_send(1+5, MESG_CHANNEL_ID_ID, CHAN0, 0x00, 0x00, 0x00, 0x00); // chan, devno (2byte) (0=wildcard) (little-endian), devtype (0=wildcard), manid (0=wildcard));
-    
-    // MESG_NETWORK_KEY_ID, net1, GARMIN_KEY 
-    buf[0] = MESG_NETWORK_KEY_ID;   
-    buf[1] = NET0;
-    hstr2hex(&buf[2], NETWORK_KEY, 16);  // dest, orig, size                                
-    ANT_sendStr(1+9, buf);
-    
-    ANT_send(1+2, MESG_CHANNEL_SEARCH_TIMEOUT_ID, CHAN0, TIMEOUT);    //    MESG_CHANNEL_SEARCH_TIMEOUT_ID, chan, timeout); 
-    
-    ANT_send(1+2, MESG_CHANNEL_RADIO_FREQ_ID, CHAN0, FREQ);         
-    
-    ANT_send(1+3, MESG_CHANNEL_MESG_PERIOD_ID, CHAN0, PERIOD%256, PERIOD/256); // NOTE: Period = Little-endian
-    ANT_send(1+1, MESG_OPEN_CHANNEL_ID, CHAN0);     // MESG_OPEN_CHANNEL_ID, chan  
-    
+	write_debug("Setting up ANT+\r\n");
+
+	UCHAR buf[20];
+
+	ANT_send(1+1, MESG_SYSTEM_RESET_ID, 0x00);      
+	ANT_send(1+2, MESG_REQUEST_ID, CHAN0, MESG_CAPABILITIES_ID);
+	ANT_send(1+2, MESG_REQUEST_ID, CHAN0, 0x3D);    // ??
+	ANT_send(1+3, MESG_ASSIGN_CHANNEL_ID, CHAN0, 0x00, NET0); // chan, chtype (0=wildcard?), network
+	ANT_send(1+5, MESG_CHANNEL_ID_ID, CHAN0, 0x00, 0x00, 0x00, 0x00); // chan, devno (2byte) (0=wildcard) (little-endian), devtype (0=wildcard), manid (0=wildcard));
+
+	// MESG_NETWORK_KEY_ID, net1, GARMIN_KEY 
+	buf[0] = MESG_NETWORK_KEY_ID;   
+	buf[1] = NET0;
+	hstr2hex(&buf[2], NETWORK_KEY, 16);  // dest, orig, size                                
+	ANT_sendStr(1+9, buf);
+
+	ANT_send(1+2, MESG_CHANNEL_SEARCH_TIMEOUT_ID, CHAN0, TIMEOUT);    //    MESG_CHANNEL_SEARCH_TIMEOUT_ID, chan, timeout); 
+
+	ANT_send(1+2, MESG_CHANNEL_RADIO_FREQ_ID, CHAN0, FREQ);         
+
+	ANT_send(1+3, MESG_CHANNEL_MESG_PERIOD_ID, CHAN0, PERIOD%256, PERIOD/256); // NOTE: Period = Little-endian
+	ANT_send(1+1, MESG_OPEN_CHANNEL_ID, CHAN0);     // MESG_OPEN_CHANNEL_ID, chan  
+
 }
 
 
@@ -1432,10 +1432,10 @@ int ANT_send(int args, ... )
 	va_list ap;
 	int i; 	
 	UCHAR buf[MAXMSG];
-	
+
 	va_start(ap, args);	
 	//fd = va_arg(ap, int); 	// Get file descriptor
-	
+
 	buf[0] = MESG_TX_SYNC;	// Everything starts with sync
 	buf[1] = args-1; 		// Number of bytes to TX (don't count fd)
 
@@ -1443,12 +1443,12 @@ int ANT_send(int args, ... )
 	{
 		buf[i] = va_arg(ap, int);
 	}
-	
+
 	buf[i] = checkSum(buf, i);  // Count sync byte + checksum
 
-        rprintf("%c", buf);	
-        flashBoobies(1);
-    	
+	rprintf("%c", buf);	
+	flashBoobies(1);
+
 	return RETURN_SUCCESS;
 }
 
@@ -1457,38 +1457,38 @@ int ANT_sendStr(int len, UCHAR *data)
 {
 	UCHAR buf[MAXMSG];
 	int i;
-	
+
 	buf[0] = MESG_TX_SYNC;	// Everything starts with sync
 	buf[1] = len-1;    		// Number of bytes to TX (don't count fd)
-	
+
 	for (i=2; i < len+2; i++)
 	{
 		buf[i] = data[i-2];
 	}
-	
+
 	buf[i] = checkSum(buf, i);	
 
-        rprintf("%c", buf);
+	rprintf("%c", buf);
 	perror("TX");	
-	
+
 	return RETURN_SUCCESS;
 }
 
 int hstr2hex(UCHAR *hex, char *hexstr, int size)
 {
 	int i;
-	
+
 	if ((size % 2) != 0)
 	{
 		printf("hstr2hex error: input hex string has to be divisible by 2 [%i]\n", size);
 		exit(RETURN_ERROR);
 	}
-	
+
 	for (i=0; i < (size/2); i++)
 	{
 		hex[i] = hexval(hexstr[i*2])*16 + hexval(hexstr[i*2 + 1]);
 	}
-	
+
 	return RETURN_SUCCESS;
 }
 
@@ -1496,9 +1496,9 @@ UCHAR checkSum(UCHAR *data, int length)
 {
 	int i;
 	UCHAR chksum = data[0]; 
-		
+
 	for (i = 1; i < length; i++)
 		chksum ^= data[i];  // +1 since skip prefix sync code, we already counted it
-	
+
 	return chksum;
 }
