@@ -95,7 +95,14 @@ static char ad0_3 = 'N';
 static char ad0_2 = 'N';
 static char ad0_1 = 'N';
 
-
+int chanNum = 0;
+int chanType = 0;
+int netNum = 0;
+//int rate = 0x1ff6; PM 
+int rate = 0x1f86; //HRM
+int devNum = 0;
+int devType = 0;
+int transType = 0;
 /*******************************************************
  * 		 Function Declarations
  ******************************************************/
@@ -134,6 +141,193 @@ int hstr2hex(UCHAR *hex, char *hexstr, int size);
 int ANT_sendStr(int len, UCHAR *data);
 UCHAR checkSum(UCHAR *data, int length);
 void flashBoobies(int num_of_times);
+
+void ANTAP1_Config(void);
+void ANTAP1_Reset(void);
+void ANTAP1_AssignCh(void);
+void ANTAP1_SetChId(void);
+void ANTAP1_SetChRFFreq(void);
+void ANTAP1_SetChPeriod(void);
+void ANTAP1_OpenCh(void);
+
+void ANTAP1_Config (void)
+{
+    ANTAP1_AssignCh();
+    delay_ms(50);
+    ANTAP1_SetChPeriod();
+    delay_ms(50);
+    ANTAP1_SetChId();
+    delay_ms(50);
+    ANTAP1_SetChRFFreq();
+    delay_ms(50);
+    ANTAP1_OpenCh();
+    delay_ms(50);
+}
+
+// Resets module
+void ANTAP1_Reset (void) 
+{
+    unsigned char i;
+    unsigned char setup[5];
+    char *p, debug[32];
+    
+    p = debug;
+
+    setup[0] = 0xa4; // SYNC Byte
+    setup[1] = 0x01; // LENGTH Byte
+    setup[2] = 0x4a; // ID Byte
+    setup[3] = 0x00; // Data Byte N (N=LENGTH)
+    setup[4] = 0xef; // Checksum
+    
+    for(i = 0 ; i < 5 ; i++)
+    {
+       putc_serial1(setup[i]);
+       sprintf(p, "Sending: [0x%02x]\r\n", setup[i]);
+       p += strlen(p);       
+    }
+
+    write_debug(debug);
+    
+}
+
+// Assigns CH=0, CH Type=00(RX), Net#=0
+void ANTAP1_AssignCh (void) 
+{
+    unsigned char i;
+    unsigned char setup[7];
+    char *p, debug[32];
+    p = debug;
+
+   
+    setup[0] = 0xa4;
+    setup[1] = 0x03;
+    setup[2] = 0x42;
+    setup[3] = chanNum;        // ChanNum
+    setup[4] = chanType;    // ChanType
+    setup[5] = netNum;        // NetNum
+    setup[6] = (0xa4^0x03^0x42^chanNum^chanType^netNum);
+    
+    for(i = 0 ; i < 7 ; i++)
+    {
+    putc_serial1(setup[i]);
+        sprintf(p, "Sending: [0x%02x]\r\n", setup[i]);
+       p += strlen(p);       
+    }
+    write_debug(debug);
+}
+
+// Assigns CH=0, RF Freq
+void ANTAP1_SetChRFFreq (void) 
+{
+    unsigned char i;
+    unsigned char setup[6];
+    char *p, debug[32];
+    p = debug;
+
+   
+    setup[0] = 0xa4;
+    setup[1] = 0x02;
+    setup[2] = 0x45;
+    setup[3] = chanNum;        // ChanNum
+    setup[4] = freq;        // RF Freq
+    setup[5] = (0xa4^0x02^0x45^chanNum^freq);
+    
+    for(i = 0 ; i < 6 ; i++)
+    {
+        putc_serial1(setup[i]);
+        p += strlen(p);       
+    }
+    write_debug(debug);
+}
+
+// CH=0, Mesg Period = 128Hz [256]
+// CH=0, Mesg Period = 128Hz [256]
+void ANTAP1_SetChPeriod (void) 
+{
+    unsigned char i;
+    unsigned char setup[7];
+    unsigned char rateMSB, rateLSB;
+    char *p, debug[32];
+    p = debug;
+    
+    rateMSB = (unsigned char)((32768/rate)>>8 & 0xff);
+    rateLSB = (unsigned char)((32768/rate) & 0xff);
+    
+//    rateLSB = 0x99;
+//    rateMSB = 0x01;
+    
+    setup[0] = 0xa4;
+    setup[1] = 0x03;
+    setup[2] = 0x43;
+    setup[3] = chanNum;
+    setup[4] = rateLSB;
+    setup[5] = rateMSB;
+    setup[6] = (0xa4^0x03^0x43^chanNum^rateLSB^rateMSB);
+    
+    for(i = 0 ; i < 7 ; i++)
+    {
+         putc_serial1(setup[i]);
+         p += strlen(p);       
+    }
+    write_debug(debug);
+  
+}
+
+// Assigns Device#=0000 (wildcard), Device Type ID=00 (wildcard), Trans Type=00 (wildcard)
+void ANTAP1_SetChId (void) 
+{
+    unsigned char i;
+    unsigned char setup[9];
+    unsigned char devNumMSB, devNumLSB;
+    char *p, debug[32];
+    p = debug;
+
+    
+    devNumMSB = (devNum >> 8) & 0xff;
+    devNumLSB = devNum & 0xff;
+    
+    setup[0] = 0xa4;
+    setup[1] = 0x05;
+    setup[2] = 0x51;
+    setup[3] = chanNum;
+    setup[4] = devNumLSB;
+    setup[5] = devNumMSB;
+    setup[6] = devType;
+    setup[7] = transType;
+    setup[8] = (0xa4^0x05^0x51^chanNum^devNumLSB^devNumMSB^devType^transType);
+    
+    for(i = 0 ; i < 9 ; i++)
+    { 
+       putc_serial1(setup[i]);
+          p += strlen(p);       
+    }
+    write_debug(debug);
+}
+
+// Opens CH 0
+void ANTAP1_OpenCh (void) 
+{
+    unsigned char i;
+    unsigned char setup[5];
+    char *p, debug[32];
+    p = debug;
+
+    
+    setup[0] = 0xa4;
+    setup[1] = 0x01;
+    setup[2] = 0x4b;
+    setup[3] = chanNum;
+    setup[4] = (0xa4^0x01^0x4b^chanNum);
+    
+    for(i = 0 ; i < 5 ; i++)
+    { 
+    putc_serial1(setup[i]);
+           p += strlen(p);       
+    }
+    write_debug(debug);
+}
+
+
 
 /*******************************************************
  * 		     	MAIN
@@ -229,13 +423,8 @@ void feed(void)
 static void UART0ISR(void)
 {
 	char temp;
+        char str[32];
 
-        write_debug("UART0ISR\n\r");
-        
-	write_debug("Size is: ");
-        write_debug(RX_in);
-        write_debug("\r\n");
- 
  	if(RX_in < 512)
 	{
 		RX_array1[RX_in] = U0RBR;
@@ -974,19 +1163,11 @@ void statLight(int statLightnum, int onoff)
 
 void Log_init(void)
 {
-	int x, mark = 0, ind = 0, count = 0;
+	int x, mark = 0, ind = 0;
 	char temp, temp2 = 0, safety = 0;
-	char name[32];
+        char debug[32];
 
-	count++;
-	string_printf(name,"DEBUG%02d.txt",count);
-	while(root_file_exists(name))
-	{
-		count++;
-		string_printf(name,"LOG%02d.txt",count);
-	}
-
-	dbgfd = root_open_new(name);
+	dbgfd = root_open_new("DEBUG.txt");
 
 	if(root_file_exists("LOGCON.txt"))
 	{
@@ -1052,6 +1233,8 @@ void Log_init(void)
 				else if(stringBuf[mark-2] == '8'){ baud = 115200; }
 
 				rprintf("baud = %d\n\r",baud);
+                                sprintf(debug, "baud = %d\n\r", baud);
+                                write_debug(debug);
 			}
 			else if(ind == 4)
 			{
@@ -1157,8 +1340,8 @@ void mode_0(void) // Auto UART mode
 	rprintf("MODE 0\n\r");
 	setup_uart0(baud,1);
 	stringSize = 512;
-	setup_ant();
-	mode_action();
+	ANTAP1_Config();
+        mode_action();
 	write_debug("Exit mode 0\n\r");
 	rprintf("Exit mode 0\n\r");
 
@@ -1237,8 +1420,6 @@ void mode_action(void)
 			write_debug("About to write to a file..\r\n");
 			rprintf("About to write to a file..\r\n");
 			
-                        //TODO parse ANT data here.
-                       
                         if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
 			{
 				while(1)
@@ -1412,112 +1593,4 @@ void delay_ms(int count)
 	count *= 10000;
 	for(i = 0; i < count; i++)
 		asm volatile ("nop");
-}
-
-
-void setup_ant(void)
-{
-	write_debug("Setting up ANT+\r\n");
-	rprintf("Setting up ANT+\r\n");
-
-	UCHAR buf[20];
-
-	ANT_send(1+1, MESG_SYSTEM_RESET_ID, 0x00);      
-	ANT_send(1+2, MESG_REQUEST_ID, CHAN0, MESG_CAPABILITIES_ID);
-	ANT_send(1+2, MESG_REQUEST_ID, CHAN0, 0x3D);    // ??
-	ANT_send(1+3, MESG_ASSIGN_CHANNEL_ID, CHAN0, 0x00, NET0); // chan, chtype (0=wildcard?), network
-	ANT_send(1+5, MESG_CHANNEL_ID_ID, CHAN0, 0x00, 0x00, 0x00, 0x00); // chan, devno (2byte) (0=wildcard) (little-endian), devtype (0=wildcard), manid (0=wildcard));
-
-	// MESG_NETWORK_KEY_ID, net1, GARMIN_KEY 
-	buf[0] = MESG_NETWORK_KEY_ID;   
-	buf[1] = NET0;
-	hstr2hex(&buf[2], NETWORK_KEY, 16);  // dest, orig, size                                
-	ANT_sendStr(1+9, buf);
-
-	ANT_send(1+2, MESG_CHANNEL_SEARCH_TIMEOUT_ID, CHAN0, TIMEOUT);    //    MESG_CHANNEL_SEARCH_TIMEOUT_ID, chan, timeout); 
-
-	ANT_send(1+2, MESG_CHANNEL_RADIO_FREQ_ID, CHAN0, FREQ);         
-
-	ANT_send(1+3, MESG_CHANNEL_MESG_PERIOD_ID, CHAN0, PERIOD%256, PERIOD/256); // NOTE: Period = Little-endian
-	ANT_send(1+1, MESG_OPEN_CHANNEL_ID, CHAN0);     // MESG_OPEN_CHANNEL_ID, chan  
-
-}
-
-
-int ANT_send(int args, ... )
-{
-	va_list ap;
-	int i; 	
-	UCHAR buf[MAXMSG];
-        char *str;
-
-	va_start(ap, args);	
-	//fd = va_arg(ap, int); 	// Get file descriptor
-        
-	buf[0] = MESG_TX_SYNC;	// Everything starts with sync
-	buf[1] = args-1; 		// Number of bytes to TX (don't count fd)
-
-	for(i = 2; i <= args+1; i++) 
-	{
-		buf[i] = va_arg(ap, int);
-	}
-
-	buf[i] = checkSum(buf, i);  // Count sync byte + checksum
-
-        sprintf(str, "[0x%02x]", buf);
-        write_debug(str);
-        putstring_serial1(buf);
-        flashBoobies(1);
-
-	return RETURN_SUCCESS;
-}
-
-
-int ANT_sendStr(int len, UCHAR *data)
-{
-	UCHAR buf[MAXMSG];
-	int i;
-
-	buf[0] = MESG_TX_SYNC;	// Everything starts with sync
-	buf[1] = len-1;    		// Number of bytes to TX (don't count fd)
-
-	for (i=2; i < len+2; i++)
-	{
-		buf[i] = data[i-2];
-	}
-
-	buf[i] = checkSum(buf, i);	
-
-        putstring_serial1(buf);
-
-	return RETURN_SUCCESS;
-}
-
-int hstr2hex(UCHAR *hex, char *hexstr, int size)
-{
-	int i;
-
-	if ((size % 2) != 0)
-	{
-		printf("hstr2hex error: input hex string has to be divisible by 2 [%i]\n", size);
-		exit(RETURN_ERROR);
-	}
-
-	for (i=0; i < (size/2); i++)
-	{
-		hex[i] = hexval(hexstr[i*2])*16 + hexval(hexstr[i*2 + 1]);
-	}
-
-	return RETURN_SUCCESS;
-}
-
-UCHAR checkSum(UCHAR *data, int length)
-{
-	int i;
-	UCHAR chksum = data[0]; 
-
-	for (i = 1; i < length; i++)
-		chksum ^= data[i];  // +1 since skip prefix sync code, we already counted it
-
-	return chksum;
 }
