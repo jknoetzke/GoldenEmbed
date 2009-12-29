@@ -182,12 +182,14 @@ void ANTAP1_Reset (void)
     for(i = 0 ; i < 5 ; i++)
     {
        putc_serial1(setup[i]);
-       sprintf(p, "Sending: [0x%02x]\r\n", setup[i]);
+       sprintf(p, "[0x%02x]", setup[i]);
        p += strlen(p);       
     }
 
+    write_debug("ANTAP1_Reset Sending: ");
     write_debug(debug);
-    
+    write_debug("\r\n");    
+
 }
 
 // Assigns CH=0, CH Type=00(RX), Net#=0
@@ -209,11 +211,13 @@ void ANTAP1_AssignCh (void)
     
     for(i = 0 ; i < 7 ; i++)
     {
-    putc_serial1(setup[i]);
-        sprintf(p, "Sending: [0x%02x]\r\n", setup[i]);
-       p += strlen(p);       
+      putc_serial1(setup[i]);
+      sprintf(p, "[0x%02x]", setup[i]);
+      p += strlen(p);       
     }
+    write_debug("ANTAP1_AssignCh Sending: ");
     write_debug(debug);
+    write_debug("\r\n");    
 }
 
 // Assigns CH=0, RF Freq
@@ -235,9 +239,13 @@ void ANTAP1_SetChRFFreq (void)
     for(i = 0 ; i < 6 ; i++)
     {
         putc_serial1(setup[i]);
+        sprintf(p, "[0x%02x]", setup[i]);
         p += strlen(p);       
     }
+
+    write_debug("ANTAP1_ChRFFeq Sending: ");
     write_debug(debug);
+    write_debug("\r\n");    
 }
 
 // CH=0, Mesg Period = 128Hz [256]
@@ -267,9 +275,13 @@ void ANTAP1_SetChPeriod (void)
     for(i = 0 ; i < 7 ; i++)
     {
          putc_serial1(setup[i]);
+         sprintf(p, "[0x%02x]", setup[i]);
          p += strlen(p);       
     }
+ 
+    write_debug("ANTAP1_ChPeriod Sending: ");
     write_debug(debug);
+    write_debug("\r\n");    
   
 }
 
@@ -299,9 +311,14 @@ void ANTAP1_SetChId (void)
     for(i = 0 ; i < 9 ; i++)
     { 
        putc_serial1(setup[i]);
-          p += strlen(p);       
+       sprintf(p, "[0x%02x]", setup[i]);
+       p += strlen(p);       
     }
+ 
+    write_debug("ANTAP1_SetChID Sending: ");
     write_debug(debug);
+    write_debug("\r\n");    
+
 }
 
 // Opens CH 0
@@ -321,10 +338,15 @@ void ANTAP1_OpenCh (void)
     
     for(i = 0 ; i < 5 ; i++)
     { 
-    putc_serial1(setup[i]);
-           p += strlen(p);       
+      putc_serial1(setup[i]);
+      sprintf(p, "[0x%02x]", setup[i]);
+      p += strlen(p);       
     }
+ 
+    write_debug("ANTAP1_OpenCH Sending: ");
     write_debug(debug);
+    write_debug("\r\n");    
+
 }
 
 
@@ -345,7 +367,7 @@ int main (void)
 
 	fat_initialize();		
 
-	setup_uart0(4800, 0);
+	setup_uart0(9600, 0);
 
 	// Flash Status Lights
 	for(i = 0; i < 5; i++)
@@ -1232,9 +1254,11 @@ void Log_init(void)
 				else if(stringBuf[mark-2] == '7'){ baud = 57600; }
 				else if(stringBuf[mark-2] == '8'){ baud = 115200; }
 
+                                baud = 4800;
 				rprintf("baud = %d\n\r",baud);
                                 sprintf(debug, "baud = %d\n\r", baud);
                                 write_debug(debug);
+                                 
 			}
 			else if(ind == 4)
 			{
