@@ -985,6 +985,7 @@ void Log_init(void)
 	if(root_file_exists("LOGCON.txt"))
 	{
 		write_debug("\n\rFound LOGcon.txt\n");
+		rprintf("\n\rFound LOGcon.txt\n");
 		fd = root_open("LOGCON.txt");
 		stringSize = fat16_read_file(fd, (unsigned char *)stringBuf, 512);
 		stringBuf[stringSize] = '\0';
@@ -993,10 +994,12 @@ void Log_init(void)
 	else
 	{
 		write_debug("Couldn't find LOGcon.txt, creating...\n");
+		rprintf("Couldn't find LOGcon.txt, creating...\n");
 		fd = root_open_new("LOGCON.txt");
 		if(fd == NULL)
 		{
 			write_debug("Error creating LOGCON.txt, locking up...\n\r");
+			rprintf("Error creating LOGCON.txt, locking up...\n\r");
 			while(1)
 			{
 				statLight(0,ON);
@@ -1145,11 +1148,13 @@ void Log_init(void)
 void mode_0(void) // Auto UART mode
 {
 	write_debug("MODE 0\n\r");
+	rprintf("MODE 0\n\r");
 	setup_uart0(baud,1);
 	stringSize = 512;
 	setup_ant();
 	mode_action();
 	write_debug("Exit mode 0\n\r");
+	rprintf("Exit mode 0\n\r");
 
 }
 
@@ -1192,6 +1197,7 @@ void mode_action(void)
 {
 	int j;
 	write_debug("mode_action\r\n");
+	rprintf("mode_action\r\n");
 	while(1)
 	{
 
@@ -1223,7 +1229,11 @@ void mode_action(void)
 			statLight(1,ON);
 
 			write_debug("About to write to a file..\r\n");
-			if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
+			rprintf("About to write to a file..\r\n");
+			
+                        //TODO parse ANT data here.
+                       
+                        if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
 			{
 				while(1)
 				{
@@ -1402,6 +1412,7 @@ void delay_ms(int count)
 void setup_ant(void)
 {
 	write_debug("Setting up ANT+\r\n");
+	rprintf("Setting up ANT+\r\n");
 
 	UCHAR buf[20];
 
