@@ -116,7 +116,6 @@ void AD_conversion(int regbank);
 
 void feed(void);
 
-static void IRQ_Routine(void) __attribute__ ((interrupt("IRQ")));
 static void UART0ISR(void); //__attribute__ ((interrupt("IRQ")));
 static void UART0ISR_2(void); //__attribute__ ((interrupt("IRQ")));
 static void MODE2ISR(void); //__attribute__ ((interrupt("IRQ")));
@@ -131,6 +130,8 @@ void write_debug(char *debug);
 void setup_ant(void);
 void delay_ms(int count);
 int ANT_send(int args, ... );
+int hstr2hex(UCHAR *hex, char *hexstr, int size);
+int ANT_sendStr(int len, UCHAR *data);
 UCHAR checkSum(UCHAR *data, int length);
 void flashBoobies(int num_of_times);
 
@@ -150,7 +151,7 @@ int main (void)
 
 	fat_initialize();		
 
-	setup_uart0(9600, 0);
+	setup_uart0(4800, 0);
 
 	// Flash Status Lights
 	for(i = 0; i < 5; i++)
@@ -229,8 +230,13 @@ static void UART0ISR(void)
 {
 	char temp;
 
-
-	if(RX_in < 512)
+        write_debug("UART0ISR\n\r");
+        
+	write_debug("Size is: ");
+        write_debug(RX_in);
+        write_debug("\r\n");
+ 
+ 	if(RX_in < 512)
 	{
 		RX_array1[RX_in] = U0RBR;
 
@@ -1443,10 +1449,11 @@ int ANT_send(int args, ... )
 	va_list ap;
 	int i; 	
 	UCHAR buf[MAXMSG];
+        char *str;
 
 	va_start(ap, args);	
 	//fd = va_arg(ap, int); 	// Get file descriptor
-
+        
 	buf[0] = MESG_TX_SYNC;	// Everything starts with sync
 	buf[1] = args-1; 		// Number of bytes to TX (don't count fd)
 
@@ -1457,8 +1464,10 @@ int ANT_send(int args, ... )
 
 	buf[i] = checkSum(buf, i);  // Count sync byte + checksum
 
-	rprintf("%c", buf);	
-	flashBoobies(1);
+        sprintf(str, "[0x%02x]", buf);
+        write_debug(str);
+        putstring_serial1(buf);
+        flashBoobies(1);
 
 	return RETURN_SUCCESS;
 }
@@ -1479,8 +1488,7 @@ int ANT_sendStr(int len, UCHAR *data)
 
 	buf[i] = checkSum(buf, i);	
 
-	rprintf("%c", buf);
-	perror("TX");	
+        putstring_serial1(buf);
 
 	return RETURN_SUCCESS;
 }
