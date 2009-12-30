@@ -296,10 +296,10 @@ void ANTAP1_SetChPeriod (void)
     setup[0] = 0xa4;
     setup[1] = 0x03;
     setup[2] = 0x43;
-    setup[3] = chanNum;
-    setup[4] = rateLSB;
-    setup[5] = rateMSB;
-    setup[6] = (0xa4^0x03^0x43^chanNum^rateLSB^rateMSB);
+    setup[3] = 0x00;
+    setup[4] = 0x86;
+    setup[5] = 0x1f;
+    setup[6] = (0xa4^0x03^0x43^0x00^0x86^0x1f);
     
     for(i = 0 ; i < 7 ; i++)
     {
