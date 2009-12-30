@@ -191,7 +191,7 @@ void ANTAP1_AssignNetwork(void)
 {
     unsigned char i;
     unsigned char setup[13];
-    char *p, debug[56];
+    char *p, debug[256];
     p = debug;
 
     setup[0] = 0xa4; //Sync
