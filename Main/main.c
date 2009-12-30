@@ -140,9 +140,13 @@ void ANTAP1_SetChId(void);
 void ANTAP1_SetChRFFreq(void);
 void ANTAP1_SetChPeriod(void);
 void ANTAP1_OpenCh(void);
+void ANTAP1_AssignNetwork(void);
+
 
 void ANTAP1_Config (void)
 {
+    ANTAP1_AssignNetwork();
+    delay_ms(50);
     ANTAP1_AssignCh();
     delay_ms(50);
     ANTAP1_SetChPeriod();
@@ -186,14 +190,14 @@ void ANTAP1_Reset (void)
 void ANTAP1_AssignNetwork(void)
 {
     unsigned char i;
-    unsigned char setup[11];
+    unsigned char setup[13];
     char *p, debug[56];
     p = debug;
 
     setup[0] = 0xa4; //Sync
     setup[1] = 0x09; //Length
     setup[2] = MESG_NETWORK_KEY_ID;
-    setup[3] = 0x00; // network key
+    setup[3] = 0x00; // network number 
     setup[4] = 0xb9;
     setup[5] = 0xa5;     
     setup[6] = 0x21;    
@@ -205,7 +209,7 @@ void ANTAP1_AssignNetwork(void)
     setup[12] = 0xb9; //Checksum
     //setup[12] = (0xa4^0x09^MESG_NETWORK_KEY_ID^0x00^0xb9^0xa5^0x21^0xfb^0xbd^0x72^0xc3^0x45);
     
-    for(i = 0 ; i < 12 ; i++)
+    for(i = 0 ; i < 13 ; i++)
     {
       putc_serial1(setup[i]);
       sprintf(p, "[0x%02x]", setup[i]);
