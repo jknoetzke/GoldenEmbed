@@ -89,14 +89,6 @@ static char ad0_3 = 'N';
 static char ad0_2 = 'N';
 static char ad0_1 = 'N';
 
-int chanNum = 0;
-int chanType = 0;
-int netNum = 0;
-//int rate = 0x1ff6; PM 
-int rate = 0x1f86; //HRM
-int devNum = 0;
-int devType = 0;
-int transType = 0;
 
 /*******************************************************
  * 		 Function Declarations
@@ -141,6 +133,11 @@ void ANTAP1_SetChPeriod(void);
 void ANTAP1_OpenCh(void);
 void ANTAP1_AssignNetwork(void);
 void ANTAP1_SetSearchTimeout(void);
+#define chanNum   0x00        // ChanNum
+#define chanType  0x00 // ChanType
+#define netNum    0x00    // NetNum
+#define devNum 0x00
+#define rate  0x1f86 //HRM
 
 void ANTAP1_Config (void)
 {
@@ -394,8 +391,8 @@ void ANTAP1_OpenCh (void)
     setup[0] = 0xa4;
     setup[1] = 0x01;
     setup[2] = 0x4b;
-    setup[3] = chanNum;
-    setup[4] = (0xa4^0x01^0x4b^chanNum);
+    setup[3] = 0x00;
+    setup[4] = (0xa4^0x01^0x4b^0x00);
     
     for(i = 0 ; i < 5 ; i++)
     { 
