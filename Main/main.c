@@ -42,7 +42,6 @@
 #include "rootdir.h"
 #include "sd_raw.h"
 
-#include "global.h"
 
 #include <stdarg.h>
 #include <fcntl.h>
@@ -51,13 +50,9 @@
 
 #include <string.h>
 
-#include "global.h"
-
-#include "antdefines.h"
-#include "antmessage.h"
 #include "serial.h"
 #include "rprintf.h"
-
+#include "libant.h"
 
 /*******************************************************
  * 		     Global Variables
@@ -103,6 +98,10 @@ int rate = 0x1f86; //HRM
 int devNum = 0;
 int devType = 0;
 int transType = 0;
+//unsigned char* MESG_NETWORK_KEY = "b9a521fbbd72c345";
+//unsigned char net;
+//unsigned char key[8];
+
 /*******************************************************
  * 		 Function Declarations
  ******************************************************/
@@ -134,12 +133,7 @@ void UNDEF_Routine(void) __attribute__ ((interrupt("UNDEF")));
 void fat_initialize(void);
 
 void write_debug(char *debug);
-void setup_ant(void);
 void delay_ms(int count);
-int ANT_send(int args, ... );
-int hstr2hex(UCHAR *hex, char *hexstr, int size);
-int ANT_sendStr(int len, UCHAR *data);
-UCHAR checkSum(UCHAR *data, int length);
 void flashBoobies(int num_of_times);
 
 void ANTAP1_Config(void);
@@ -191,6 +185,44 @@ void ANTAP1_Reset (void)
     write_debug("\r\n");    
 
 }
+
+void ANTAP1_AssignNetwork(void)
+{
+     //unsigned char* MESG_NETWORK_KEY = "b9a521fbbd72c345";
+     //unsigned char net;
+     //unsigned char key[8];
+
+
+    unsigned char i;
+    unsigned char setup[11];
+    char *p, debug[56];
+    p = debug;
+
+   
+    setup[0] = 0xa4;
+    setup[1] = MESG_NETWORK_KEY_ID;
+    setup[2] = 0xb9;
+    setup[3] = 0xa5;     
+    setup[4] = 0x21;    
+    setup[5] = 0xfb; 
+    setup[6] = 0xbd; 
+    setup[7] = 0x72; 
+    setup[8] = 0xc3; 
+    setup[9] = 0x45; 
+ 
+    setup[10] = (0xa4^MESG_NETWORK_KEY_ID^0xb9^0xa5^0x21^0xfb^0xbd^0x72^0xc3^0x45);
+    
+    for(i = 0 ; i < 11 ; i++)
+    {
+      putc_serial1(setup[i]);
+      sprintf(p, "[0x%02x]", setup[i]);
+      p += strlen(p);       
+    }
+    write_debug("ANTAP1_AssignNetwork Sending: ");
+    write_debug(debug);
+    write_debug("\r\n");    
+}
+
 
 // Assigns CH=0, CH Type=00(RX), Net#=0
 void ANTAP1_AssignCh (void) 
