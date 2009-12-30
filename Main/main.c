@@ -98,9 +98,6 @@ int rate = 0x1f86; //HRM
 int devNum = 0;
 int devType = 0;
 int transType = 0;
-//unsigned char* MESG_NETWORK_KEY = "b9a521fbbd72c345";
-//unsigned char net;
-//unsigned char key[8];
 
 /*******************************************************
  * 		 Function Declarations
@@ -188,31 +185,27 @@ void ANTAP1_Reset (void)
 
 void ANTAP1_AssignNetwork(void)
 {
-     //unsigned char* MESG_NETWORK_KEY = "b9a521fbbd72c345";
-     //unsigned char net;
-     //unsigned char key[8];
-
-
     unsigned char i;
     unsigned char setup[11];
     char *p, debug[56];
     p = debug;
 
-   
-    setup[0] = 0xa4;
-    setup[1] = MESG_NETWORK_KEY_ID;
-    setup[2] = 0xb9;
-    setup[3] = 0xa5;     
-    setup[4] = 0x21;    
-    setup[5] = 0xfb; 
-    setup[6] = 0xbd; 
-    setup[7] = 0x72; 
-    setup[8] = 0xc3; 
-    setup[9] = 0x45; 
- 
-    setup[10] = (0xa4^MESG_NETWORK_KEY_ID^0xb9^0xa5^0x21^0xfb^0xbd^0x72^0xc3^0x45);
+    setup[0] = 0xa4; //Sync
+    setup[1] = 0x09; //Length
+    setup[2] = MESG_NETWORK_KEY_ID;
+    setup[3] = 0x00; // network key
+    setup[4] = 0xb9;
+    setup[5] = 0xa5;     
+    setup[6] = 0x21;    
+    setup[7] = 0xfb; 
+    setup[8] = 0xbd; 
+    setup[9] = 0x72; 
+    setup[10] = 0xc3; 
+    setup[11] = 0x45; 
+    setup[12] = 0xb9; //Checksum
+    //setup[12] = (0xa4^0x09^MESG_NETWORK_KEY_ID^0x00^0xb9^0xa5^0x21^0xfb^0xbd^0x72^0xc3^0x45);
     
-    for(i = 0 ; i < 11 ; i++)
+    for(i = 0 ; i < 12 ; i++)
     {
       putc_serial1(setup[i]);
       sprintf(p, "[0x%02x]", setup[i]);
