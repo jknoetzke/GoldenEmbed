@@ -51,7 +51,6 @@
 #include <string.h>
 
 #include "serial.h"
-#include "rprintf.h"
 #include "libant.h"
 
 /*******************************************************
@@ -141,30 +140,64 @@ void ANTAP1_SetChRFFreq(void);
 void ANTAP1_SetChPeriod(void);
 void ANTAP1_OpenCh(void);
 void ANTAP1_AssignNetwork(void);
-
+void ANTAP1_SetSearchTimeout(void);
 
 void ANTAP1_Config (void)
 {
-    ANTAP1_AssignNetwork();
+    ANTAP1_Reset();
     delay_ms(50);
     ANTAP1_AssignCh();
     delay_ms(50);
-    ANTAP1_SetChPeriod();
-    delay_ms(50);
     ANTAP1_SetChId();
     delay_ms(50);
+    ANTAP1_AssignNetwork();
+    delay_ms(50);
+    ANTAP1_SetSearchTimeout();
+    delay_ms(50);
     ANTAP1_SetChRFFreq();
+    delay_ms(50);
+    ANTAP1_SetChPeriod();
     delay_ms(50);
     ANTAP1_OpenCh();
     delay_ms(50);
 }
+
+
+void ANTAP1_SetSearchTimeout(void)
+{
+    unsigned char i;
+    unsigned char setup[6];
+    char *p, debug[128];
+    
+    p = debug;
+
+    setup[0] = 0xa4; // SYNC Byte
+    setup[1] = 0x02; // LENGTH Byte
+    setup[2] = 0x44; // ID Byte
+    setup[3] = 0x00; // Data Byte N (N=LENGTH)
+    setup[4] = 0x1e; // Checksum
+    setup[5] = (0xa4^0x02^0x44^0x00^0x1e);
+    
+    for(i = 0 ; i < 6 ; i++)
+    {
+       putc_serial0(setup[i]);
+       sprintf(p, "[0x%02x]", setup[i]);
+       p += strlen(p);       
+    }
+
+    write_debug("ANTAP1_SetSearchTimeout: ");
+    write_debug(debug);
+    write_debug("\r\n");    
+   
+}
+
 
 // Resets module
 void ANTAP1_Reset (void) 
 {
     unsigned char i;
     unsigned char setup[5];
-    char *p, debug[32];
+    char *p, debug[128];
     
     p = debug;
 
@@ -176,7 +209,7 @@ void ANTAP1_Reset (void)
     
     for(i = 0 ; i < 5 ; i++)
     {
-       putc_serial1(setup[i]);
+       putc_serial0(setup[i]);
        sprintf(p, "[0x%02x]", setup[i]);
        p += strlen(p);       
     }
@@ -210,7 +243,7 @@ void ANTAP1_AssignNetwork(void)
     
     for(i = 0 ; i < 13 ; i++)
     {
-      putc_serial1(setup[i]);
+      putc_serial0(setup[i]);
       sprintf(p, "[0x%02x]", setup[i]);
       p += strlen(p);       
     }
@@ -225,7 +258,7 @@ void ANTAP1_AssignCh (void)
 {
     unsigned char i;
     unsigned char setup[7];
-    char *p, debug[32];
+    char *p, debug[128];
     p = debug;
 
    
@@ -239,7 +272,7 @@ void ANTAP1_AssignCh (void)
     
     for(i = 0 ; i < 7 ; i++)
     {
-      putc_serial1(setup[i]);
+      putc_serial0(setup[i]);
       sprintf(p, "[0x%02x]", setup[i]);
       p += strlen(p);       
     }
@@ -253,20 +286,20 @@ void ANTAP1_SetChRFFreq (void)
 {
     unsigned char i;
     unsigned char setup[6];
-    char *p, debug[32];
+    char *p, debug[128];
     p = debug;
 
    
     setup[0] = 0xa4;
     setup[1] = 0x02;
     setup[2] = 0x45;
-    setup[3] = chanNum;        // ChanNum
-    setup[4] = freq;        // RF Freq
-    setup[5] = (0xa4^0x02^0x45^chanNum^freq);
+    setup[3] = 0x00;        // ChanNum
+    setup[4] = 0x39;        // RF Freq
+    setup[5] = (0xa4^0x02^0x45^0x00^0x39);
     
     for(i = 0 ; i < 6 ; i++)
     {
-        putc_serial1(setup[i]);
+        putc_serial0(setup[i]);
         sprintf(p, "[0x%02x]", setup[i]);
         p += strlen(p);       
     }
@@ -283,7 +316,7 @@ void ANTAP1_SetChPeriod (void)
     unsigned char i;
     unsigned char setup[7];
     unsigned char rateMSB, rateLSB;
-    char *p, debug[32];
+    char *p, debug[128];
     p = debug;
     
     rateMSB = (unsigned char)((32768/rate)>>8 & 0xff);
@@ -302,7 +335,7 @@ void ANTAP1_SetChPeriod (void)
     
     for(i = 0 ; i < 7 ; i++)
     {
-         putc_serial1(setup[i]);
+         putc_serial0(setup[i]);
          sprintf(p, "[0x%02x]", setup[i]);
          p += strlen(p);       
     }
@@ -319,7 +352,7 @@ void ANTAP1_SetChId (void)
     unsigned char i;
     unsigned char setup[9];
     unsigned char devNumMSB, devNumLSB;
-    char *p, debug[32];
+    char *p, debug[128];
     p = debug;
 
     
@@ -329,16 +362,16 @@ void ANTAP1_SetChId (void)
     setup[0] = 0xa4;
     setup[1] = 0x05;
     setup[2] = 0x51;
-    setup[3] = chanNum;
-    setup[4] = devNumLSB;
-    setup[5] = devNumMSB;
-    setup[6] = devType;
-    setup[7] = transType;
-    setup[8] = (0xa4^0x05^0x51^chanNum^devNumLSB^devNumMSB^devType^transType);
+    setup[3] = 0x00;
+    setup[4] = 0x00;
+    setup[5] = 0x00;
+    setup[6] = 0x00;
+    setup[7] = 0x00;
+    setup[8] = (0xa4^0x05^0x51^0x00^0x00^0x00^0x00^0x00);
     
     for(i = 0 ; i < 9 ; i++)
     { 
-       putc_serial1(setup[i]);
+       putc_serial0(setup[i]);
        sprintf(p, "[0x%02x]", setup[i]);
        p += strlen(p);       
     }
@@ -354,7 +387,7 @@ void ANTAP1_OpenCh (void)
 {
     unsigned char i;
     unsigned char setup[5];
-    char *p, debug[32];
+    char *p, debug[128];
     p = debug;
 
     
@@ -366,7 +399,7 @@ void ANTAP1_OpenCh (void)
     
     for(i = 0 ; i < 5 ; i++)
     { 
-      putc_serial1(setup[i]);
+      putc_serial0(setup[i]);
       sprintf(p, "[0x%02x]", setup[i]);
       p += strlen(p);       
     }
@@ -395,7 +428,7 @@ int main (void)
 
 	fat_initialize();		
 
-	setup_uart0(9600, 0);
+	setup_uart0(4800, 0);
 
 	// Flash Status Lights
 	for(i = 0; i < 5; i++)
@@ -452,8 +485,9 @@ int main (void)
 
 void Initialize(void)
 {
-	rprintf_devopen(putc_serial0);
+	//rprintf_devopen(putc_serial0);
 
+        init_serial0(4800);
 	PINSEL0 = 0xCF351505;
 	PINSEL1 = 0x15441801;
 	IODIR0 |= 0x00000884;
@@ -473,7 +507,6 @@ void feed(void)
 static void UART0ISR(void)
 {
 	char temp;
-        char str[32];
 
  	if(RX_in < 512)
 	{
@@ -1215,14 +1248,13 @@ void Log_init(void)
 {
 	int x, mark = 0, ind = 0;
 	char temp, temp2 = 0, safety = 0;
-        char debug[32];
+        char debug[128];
 
 	dbgfd = root_open_new("DEBUG.txt");
 
 	if(root_file_exists("LOGCON.txt"))
 	{
 		write_debug("\n\rFound LOGcon.txt\n");
-		rprintf("\n\rFound LOGcon.txt\n");
 		fd = root_open("LOGCON.txt");
 		stringSize = fat16_read_file(fd, (unsigned char *)stringBuf, 512);
 		stringBuf[stringSize] = '\0';
@@ -1231,12 +1263,10 @@ void Log_init(void)
 	else
 	{
 		write_debug("Couldn't find LOGcon.txt, creating...\n");
-		rprintf("Couldn't find LOGcon.txt, creating...\n");
 		fd = root_open_new("LOGCON.txt");
 		if(fd == NULL)
 		{
 			write_debug("Error creating LOGCON.txt, locking up...\n\r");
-			rprintf("Error creating LOGCON.txt, locking up...\n\r");
 			while(1)
 			{
 				statLight(0,ON);
@@ -1264,12 +1294,11 @@ void Log_init(void)
 			if(ind == 1)
 			{
 				mode = stringBuf[mark-2]-48; // 0 = auto uart, 1 = trigger uart, 2 = adc
-				rprintf("mode = %d\n\r",mode);
 			}
 			else if(ind == 2)
 			{
 				asc = stringBuf[mark-2]; // default is 'N'
-				rprintf("asc = %c\n\r",asc);
+				//rprintf("asc = %c\n\r",asc);
 			}
 			else if(ind == 3)
 			{
@@ -1282,8 +1311,9 @@ void Log_init(void)
 				else if(stringBuf[mark-2] == '7'){ baud = 57600; }
 				else if(stringBuf[mark-2] == '8'){ baud = 115200; }
 
-                                baud = 4800;
-				rprintf("baud = %d\n\r",baud);
+				//rprintf("baud = %d\n\r",baud);
+                               
+                                baud = 4800; 
                                 sprintf(debug, "baud = %d\n\r", baud);
                                 write_debug(debug);
                                  
@@ -1296,72 +1326,72 @@ void Log_init(void)
 					freq+= (stringBuf[mark-4]-48) * 100;
 					if((stringBuf[mark-5] >= 48) && (stringBuf[mark-5] < 58)){ freq += (stringBuf[mark-5]-48)*1000; }
 				}
-				rprintf("freq = %d\n\r",freq);
+				//rprintf("freq = %d\n\r",freq);
 			}
 			else if(ind == 5)
 			{
 				trig = stringBuf[mark-2]; // default is $
 
-				rprintf("trig = %c\n\r",trig);
+				//rprintf("trig = %c\n\r",trig);
 			}
 			else if(ind == 6)
 			{
 				frame = (stringBuf[mark-2]-48) + (stringBuf[mark-3]-48) * 10 + (stringBuf[mark-4]-48)*100;
 				if(frame > 510){ frame = 510; } // up to 510 characters
-				rprintf("frame = %d\n\r",frame);
+				//rprintf("frame = %d\n\r",frame);
 			}
 			else if(ind == 7)
 			{
 				ad1_3 = stringBuf[mark-2]; // default is 'N'
 				if(ad1_3 == 'Y'){ temp2++; }
-				rprintf("ad1_3 = %c\n\r",ad1_3);
+				//rprintf("ad1_3 = %c\n\r",ad1_3);
 			}
 			else if(ind == 8)
 			{
 				ad0_3 = stringBuf[mark-2]; // default is 'N'
 				if(ad0_3 == 'Y'){ temp2++; }
-				rprintf("ad0_3 = %c\n\r",ad0_3);
+				//rprintf("ad0_3 = %c\n\r",ad0_3);
 			}
 			else if(ind == 9)
 			{
 				ad0_2 = stringBuf[mark-2]; // default is 'N'
 				if(ad0_2 == 'Y'){ temp2++; }
-				rprintf("ad0_2 = %c\n\r",ad0_2);
+				//rprintf("ad0_2 = %c\n\r",ad0_2);
 			}
 			else if(ind == 10)
 			{
 				ad0_1 = stringBuf[mark-2]; // default is 'N'
 				if(ad0_1 == 'Y'){ temp2++; }
-				rprintf("ad0_1 = %c\n\r",ad0_1);
+				//rprintf("ad0_1 = %c\n\r",ad0_1);
 			}
 			else if(ind == 11)
 			{
 				ad1_2 = stringBuf[mark-2]; // default is 'N'
 				if(ad1_2 == 'Y'){ temp2++; }
-				rprintf("ad1_2 = %c\n\r",ad1_2);
+				//rprintf("ad1_2 = %c\n\r",ad1_2);
 			}
 			else if(ind == 12)
 			{
 				ad0_4 = stringBuf[mark-2]; // default is 'N'
 				if(ad0_4 == 'Y'){ temp2++; }
-				rprintf("ad0_4 = %c\n\r",ad0_4);
+				//rprintf("ad0_4 = %c\n\r",ad0_4);
 			}
 			else if(ind == 13)
 			{
 				ad1_7 = stringBuf[mark-2]; // default is 'N'
 				if(ad1_7 == 'Y'){ temp2++; }
-				rprintf("ad1_7 = %c\n\r",ad1_7);
+				//rprintf("ad1_7 = %c\n\r",ad1_7);
 			}
 			else if(ind == 14)
 			{
 				ad1_6 = stringBuf[mark-2]; // default is 'N'
 				if(ad1_6 == 'Y'){ temp2++; }
-				rprintf("ad1_6 = %c\n\r",ad1_6);
+				//rprintf("ad1_6 = %c\n\r",ad1_6);
 			}
 			else if(ind == 15)
 			{
 				safety = stringBuf[mark-2]; // default is 'Y'
-				rprintf("safety = %c\n\r",safety);
+				//rprintf("safety = %c\n\r",safety);
 			}
 		}
 	}
@@ -1389,19 +1419,19 @@ void Log_init(void)
 void mode_0(void) // Auto UART mode
 {
 	write_debug("MODE 0\n\r");
-	rprintf("MODE 0\n\r");
+	//rprintf("MODE 0\n\r");
 	setup_uart0(baud,1);
 	stringSize = 512;
 	ANTAP1_Config();
         mode_action();
 	write_debug("Exit mode 0\n\r");
-	rprintf("Exit mode 0\n\r");
+	//rprintf("Exit mode 0\n\r");
 
 }
 
 void mode_1(void)
 {
-	rprintf("MODE 1\n\r");	
+	//rprintf("MODE 1\n\r");	
 
 	setup_uart0(baud,2);
 	stringSize = frame + 2;
@@ -1411,7 +1441,7 @@ void mode_1(void)
 
 void mode_2(void)
 {
-	rprintf("MODE 2\n\r");	
+	//rprintf("MODE 2\n\r");	
 	enableIRQ();
 	// Timer0  interrupt is an IRQ interrupt
 	VICIntSelect &= ~0x00000010;
@@ -1438,7 +1468,7 @@ void mode_action(void)
 {
 	int j;
 	write_debug("mode_action\r\n");
-	rprintf("mode_action\r\n");
+	//rprintf("mode_action\r\n");
 	while(1)
 	{
 
@@ -1470,7 +1500,7 @@ void mode_action(void)
 			statLight(1,ON);
 
 			write_debug("About to write to a file..\r\n");
-			rprintf("About to write to a file..\r\n");
+			//rprintf("About to write to a file..\r\n");
 			
                         if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
 			{
@@ -1598,8 +1628,8 @@ void AD_conversion(int regbank)
 		AD1CR = 0x00000000;
 	}
 
-	rprintf("%d", temp2);
-	rprintf("   ");
+	//rprintf("%d", temp2);
+	//rprintf("   ");
 
 }
 
@@ -1607,13 +1637,13 @@ void fat_initialize(void)
 {
 	if(!sd_raw_init())
 	{
-		rprintf("SD Init Error\n\r");
+		//rprintf("SD Init Error\n\r");
 		while(1);
 	}
 
 	if(openroot())
 	{ 
-		rprintf("SD OpenRoot Error\n\r");
+		//rprintf("SD OpenRoot Error\n\r");
 	}
 }
 
