@@ -34,6 +34,7 @@
 #include "serial.h"
 #include "rprintf.h"
 
+
 //Needed for main function calls
 #include "main_msc.h"
 #include "fat16.h"
@@ -89,6 +90,17 @@ static char ad0_3 = 'N';
 static char ad0_2 = 'N';
 static char ad0_1 = 'N';
 
+//Timestamp
+struct timestamp
+{
+    int year;
+    int month;
+    int day;
+    int hour;
+    int minute;
+    int second;
+};
+
 
 /*******************************************************
  * 		 Function Declarations
@@ -133,6 +145,10 @@ void ANTAP1_SetChPeriod(void);
 void ANTAP1_OpenCh(void);
 void ANTAP1_AssignNetwork(void);
 void ANTAP1_SetSearchTimeout(void);
+void set_time(void);
+struct timestamp * get_time(void);
+
+
 #define chanNum   0x00        // ChanNum
 #define chanType  0x00 // ChanType
 #define netNum    0x00    // NetNum
@@ -157,6 +173,8 @@ void ANTAP1_Config (void)
     delay_ms(50);
     ANTAP1_OpenCh();
     delay_ms(50);
+
+    get_time();
 }
 
 
@@ -462,7 +480,8 @@ int main (void)
 		string_printf(name,"LOG%02d.txt",count);
 	}
 
-	handle = root_open_new(name);
+
+ 	handle = root_open_new(name);
 
 	sd_raw_sync();	
 
@@ -472,6 +491,60 @@ int main (void)
 
 	return 0;
 }
+
+//Set the time
+struct timestamp * get_time(void)
+{
+
+       struct timestamp *ts;
+       //Test to see if you can create a timestamp.
+       PCONP |= (1<<9); //make sure RTC is powered, just to be sure 
+       CCR = 0x12; //disable RTC, set xtal flag true 
+
+       //update time registers 
+       ts->year = YEAR; 
+       ts->month = MONTH;
+       ts->day = DOM;
+       ts->hour = HOUR;
+       ts->minute = MIN;
+       ts->second = SEC;
+       
+       CCR = 0x11; //enable RTC, keep xtal flag true 
+
+       char debug[128];
+       sprintf(debug, "YEAR: %d MONTH: %d DAY: %d HOUR: %d MIN: %d SEC: %d\r\n", YEAR, MONTH, DOM, HOUR, MIN, SEC);
+       write_debug(debug);
+
+       return ts;
+
+}
+
+
+//Set the time
+void set_time(void)
+{
+       //Test to see if you can create a timestamp.
+       PCONP |= (1<<9); //make sure RTC is powered, just to be sure 
+       CCR = 0x12; //disable RTC, set xtal flag true 
+
+       //update time registers 
+       YEAR = 2009; 
+       MONTH = 12;
+       DOM = 30;
+       HOUR = 22;
+       MIN = 43;
+       SEC = 0;
+       
+       CCR = 0x11; //enable RTC, keep xtal flag true 
+
+       char debug[128];
+
+       sprintf(debug, "YEAR: %d MONTH: %d DAY: %d HOUR: %d MIN: %d SEC: %d\r\n", YEAR, MONTH, DOM, HOUR, MIN, SEC);
+       write_debug(debug);
+
+
+}
+
 
 
 /*******************************************************
@@ -1251,15 +1324,17 @@ void Log_init(void)
 
 	if(root_file_exists("LOGCON.txt"))
 	{
-		write_debug("\n\rFound LOGcon.txt\n");
+		write_debug("\n\rFound LOGCON.txt\n");
 		fd = root_open("LOGCON.txt");
 		stringSize = fat16_read_file(fd, (unsigned char *)stringBuf, 512);
 		stringBuf[stringSize] = '\0';
 		fat16_close_file(fd);
+                write_debug("Contents of LOGCON IS: \r\n");
+                write_debug(stringBuf);
 	}
 	else
 	{
-		write_debug("Couldn't find LOGcon.txt, creating...\n");
+		write_debug("Couldn't find LOGCON.txt, creating...\n");
 		fd = root_open_new("LOGCON.txt");
 		if(fd == NULL)
 		{
@@ -1274,10 +1349,14 @@ void Log_init(void)
 				statLight(1,OFF);
 			}
 		}
-		strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 4\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
+		strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 3\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\nYEAR=2009\r\n");
 		stringSize = strlen(stringBuf);
 		fat16_write_file(fd, (unsigned char*)stringBuf, stringSize);
 		sd_raw_sync();
+
+                //Set the time
+                set_time();
+
 
 	}
 
@@ -1310,7 +1389,7 @@ void Log_init(void)
 
 				//rprintf("baud = %d\n\r",baud);
                                
-                                baud = 4800; 
+                                //baud = 4800; 
                                 sprintf(debug, "baud = %d\n\r", baud);
                                 write_debug(debug);
                                  
@@ -1389,7 +1468,7 @@ void Log_init(void)
 			{
 				safety = stringBuf[mark-2]; // default is 'Y'
 				//rprintf("safety = %c\n\r",safety);
-			}
+	    	        }
 		}
 	}
 
