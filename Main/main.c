@@ -157,6 +157,7 @@ struct timestamp * get_time(void);
 
 void ANTAP1_Config (void)
 {
+    set_time();
     ANTAP1_Reset();
     delay_ms(50);
     ANTAP1_AssignCh();
@@ -512,7 +513,7 @@ struct timestamp * get_time(void)
        CCR = 0x11; //enable RTC, keep xtal flag true 
 
        char debug[128];
-       sprintf(debug, "YEAR: %d MONTH: %d DAY: %d HOUR: %d MIN: %d SEC: %d\r\n", YEAR, MONTH, DOM, HOUR, MIN, SEC);
+       sprintf(debug, "The current time is: YEAR: %d MONTH: %d DAY: %d HOUR: %d MIN: %d SEC: %d\r\n", YEAR, MONTH, DOM, HOUR, MIN, SEC);
        write_debug(debug);
 
        return ts;
@@ -530,18 +531,16 @@ void set_time(void)
        //update time registers 
        YEAR = 2009; 
        MONTH = 12;
-       DOM = 30;
-       HOUR = 22;
-       MIN = 43;
+       DOM = 31;
+       HOUR = 12;
+       MIN = 26;
        SEC = 0;
        
        CCR = 0x11; //enable RTC, keep xtal flag true 
 
        char debug[128];
-
-       sprintf(debug, "YEAR: %d MONTH: %d DAY: %d HOUR: %d MIN: %d SEC: %d\r\n", YEAR, MONTH, DOM, HOUR, MIN, SEC);
+       sprintf(debug, "Setting time to: YEAR: %d MONTH: %d DAY: %d HOUR: %d MIN: %d SEC: %d\r\n", YEAR, MONTH, DOM, HOUR, MIN, SEC);
        write_debug(debug);
-
 
 }
 
@@ -1349,7 +1348,7 @@ void Log_init(void)
 				statLight(1,OFF);
 			}
 		}
-		strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 3\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\nYEAR=2009\r\n");
+		strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 3\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
 		stringSize = strlen(stringBuf);
 		fat16_write_file(fd, (unsigned char*)stringBuf, stringSize);
 		sd_raw_sync();
