@@ -70,25 +70,13 @@ char get_frame = 0;
 
 signed int stringSize;
 struct fat16_file_struct * handle; //Actual Log File.
-struct fat16_file_struct * fd; //Used for LOGCON only
-struct fat16_file_struct * dbgfd; //Used for Debug
 char stringBuf[256];
 
+
 // Default Settings
-static char mode = 0;
-static char asc = 'N';
 static int baud = 9600;
-static int freq = 100;
 static char trig = '$';
 static short frame = 100;
-static char ad1_7 = 'N';
-static char ad1_6 = 'N';
-static char ad1_3 = 'N';
-static char ad1_2 = 'N';
-static char ad0_4 = 'N';
-static char ad0_3 = 'N';
-static char ad0_2 = 'N';
-static char ad0_1 = 'N';
 
 //Timestamp
 struct timestamp
@@ -123,8 +111,6 @@ void AD_conversion(int regbank);
 void feed(void);
 
 static void UART0ISR(void); //__attribute__ ((interrupt("IRQ")));
-static void UART0ISR_2(void); //__attribute__ ((interrupt("IRQ")));
-static void MODE2ISR(void); //__attribute__ ((interrupt("IRQ")));
 
 void FIQ_Routine(void) __attribute__ ((interrupt("FIQ")));
 void SWI_Routine(void) __attribute__ ((interrupt("SWI")));
@@ -146,7 +132,7 @@ void ANTAP1_OpenCh(void);
 void ANTAP1_AssignNetwork(void);
 void ANTAP1_SetSearchTimeout(void);
 void set_time(void);
-struct timestamp * get_time(void);
+struct timestamp get_time(void);
 
 
 #define chanNum   0x00        // ChanNum
@@ -177,7 +163,7 @@ void ANTAP1_Config (void)
     ANTAP1_OpenCh();
     delay_ms(50);
 
-    get_time();
+    //get_time();
 }
 
 
@@ -459,7 +445,7 @@ int main (void)
 		statLight(1,OFF);
 	}
 
-	Log_init();
+	//Log_init();
 
 	count++;
 	string_printf(name,"LOG%02d.txt",count);
@@ -488,29 +474,27 @@ int main (void)
 
 	sd_raw_sync();	
 
-	if(mode == 0){ mode_0(); }
-	else if(mode == 1){ mode_1(); }
-	else if(mode == 2){ mode_2(); }
+	mode_0();
 
 	return 0;
 }
 
 //Set the time
-struct timestamp * get_time(void)
+struct timestamp get_time(void)
 {
 
-       struct timestamp *ts;
+       struct timestamp ts;
        //Test to see if you can create a timestamp.
        PCONP |= (1<<9); //make sure RTC is powered, just to be sure 
        CCR = 0x12; //disable RTC, set xtal flag true 
 
        //update time registers 
-       ts->year = YEAR; 
-       ts->month = MONTH;
-       ts->day = DOM;
-       ts->hour = HOUR;
-       ts->minute = MIN;
-       ts->second = SEC;
+       ts.year = YEAR; 
+       ts.month = MONTH;
+       ts.day = DOM;
+       ts.hour = HOUR;
+       ts.minute = MIN;
+       ts.second = SEC;
        
        CCR = 0x11; //enable RTC, keep xtal flag true 
 
@@ -649,562 +633,6 @@ static void UART0ISR_2(void)
 	VICVectAddr = 0;
 }
 
-static void MODE2ISR(void)
-{
-	int temp = 0, temp2 = 0, ind = 0;
-	int j;
-	short a;
-	char q[50], temp_buff[4];
-
-
-	T0IR = 1; // reset TMR0 interrupt
-
-	for(j = 0; j < 50; j++)
-	{
-		q[j] = 0;
-	}
-
-
-	// Get AD1.3
-	if(ad1_3 == 'Y')
-	{
-		AD1CR = 0x00020FF08; // AD1.3
-		AD1CR |= 0x01000000; // start conversion
-		while((temp & 0x80000000) == 0)
-		{
-			temp = AD1DR;
-		}
-		temp &= 0x0000FFC0;
-		temp2 = temp / 0x00000040;
-
-		AD1CR = 0x00000000;
-
-		if(asc == 'Y')
-		{
-			itoa(temp2, 10, temp_buff);
-			if(temp_buff[0] >= 48 && temp_buff[0] <= 57)
-			{
-				q[ind] = temp_buff[0];
-				ind++;
-			}
-			if(temp_buff[1] >= 48 && temp_buff[1] <= 57)
-			{
-				q[ind] = temp_buff[1];
-				ind++;
-			}
-			if(temp_buff[2] >= 48 && temp_buff[2] <= 57)
-			{
-				q[ind] = temp_buff[2];
-				ind++;
-			}
-			if(temp_buff[3] >= 48 && temp_buff[3] <= 57)
-			{
-				q[ind] = temp_buff[3];
-				ind++;
-			}
-
-			q[ind] = 0;
-			ind++;
-			temp = 0; 
-			temp2 = 0;
-			temp_buff[0] = 0;
-			temp_buff[1] = 0;
-			temp_buff[2] = 0;
-			temp_buff[3] = 0;
-
-		}
-
-		else if(asc == 'N')
-		{
-			a = ((short)temp2 & 0xFF00) / 0x00000100;
-			q[ind] = (char)a;
-
-			q[ind+1]  = (char)temp2 & 0xFF;
-			ind += 2;
-			temp = 0;
-		}
-	}
-	// Get AD0.3
-	if(ad0_3 == 'Y')
-	{
-		AD0CR = 0x00020FF08; // AD0.3
-		AD0CR |= 0x01000000; // start conversion
-		while((temp & 0x80000000) == 0)
-		{
-			temp = AD0DR;
-		}
-		temp &= 0x0000FFC0;
-		temp2 = temp / 0x00000040;
-
-		AD0CR = 0x00000000;
-
-		if(asc == 'Y')
-		{
-			itoa(temp2, 10, temp_buff);
-			if(temp_buff[0] >= 48 && temp_buff[0] <= 57)
-			{
-				q[ind] = temp_buff[0];
-				ind++;
-			}
-			if(temp_buff[1] >= 48 && temp_buff[1] <= 57)
-			{
-				q[ind] = temp_buff[1];
-				ind++;
-			}
-			if(temp_buff[2] >= 48 && temp_buff[2] <= 57)
-			{
-				q[ind] = temp_buff[2];
-				ind++;
-			}
-			if(temp_buff[3] >= 48 && temp_buff[3] <= 57)
-			{
-				q[ind] = temp_buff[3];
-				ind++;
-			}
-
-			q[ind] = 0;
-			ind++;
-			temp = 0; 
-			temp2 = 0;
-			temp_buff[0] = 0;
-			temp_buff[1] = 0;
-			temp_buff[2] = 0;
-			temp_buff[3] = 0;
-
-		}
-
-		else if(asc == 'N')
-		{
-			a = ((short)temp2 & 0xFF00) / 0x00000100;
-			q[ind] = (char)a;
-
-			q[ind+1]  = (char)temp2 & 0xFF;
-			ind += 2;
-			temp = 0;
-		}
-	}
-	// Get AD0.2
-	if(ad0_2 == 'Y')
-	{
-		AD0CR = 0x00020FF04; // AD1.2
-		AD0CR |= 0x01000000; // start conversion
-		while((temp & 0x80000000) == 0)
-		{
-			temp = AD0DR;
-		}
-		temp &= 0x0000FFC0;
-		temp2 = temp / 0x00000040;
-
-		AD0CR = 0x00000000;
-
-		if(asc == 'Y')
-		{
-			itoa(temp2, 10, temp_buff);
-			if(temp_buff[0] >= 48 && temp_buff[0] <= 57)
-			{
-				q[ind] = temp_buff[0];
-				ind++;
-			}
-			if(temp_buff[1] >= 48 && temp_buff[1] <= 57)
-			{
-				q[ind] = temp_buff[1];
-				ind++;
-			}
-			if(temp_buff[2] >= 48 && temp_buff[2] <= 57)
-			{
-				q[ind] = temp_buff[2];
-				ind++;
-			}
-			if(temp_buff[3] >= 48 && temp_buff[3] <= 57)
-			{
-				q[ind] = temp_buff[3];
-				ind++;
-			}
-
-			q[ind] = 0;
-			ind++;
-			temp = 0; 
-			temp2 = 0;
-			temp_buff[0] = 0;
-			temp_buff[1] = 0;
-			temp_buff[2] = 0;
-			temp_buff[3] = 0;
-
-		}
-
-		else if(asc == 'N')
-		{
-			a = ((short)temp2 & 0xFF00) / 0x00000100;
-			q[ind] = (char)a;
-
-			q[ind+1]  = (char)temp2 & 0xFF;
-			ind += 2;
-			temp = 0;
-		}
-	}
-	// Get AD0.1
-	if(ad0_1 == 'Y')
-	{
-		AD0CR = 0x00020FF02; // AD0.1
-		AD0CR |= 0x01000000; // start conversion
-		while((temp & 0x80000000) == 0)
-		{
-			temp = AD0DR;
-		}
-		temp &= 0x0000FFC0;
-		temp2 = temp / 0x00000040;
-
-		AD0CR = 0x00000000;
-
-		if(asc == 'Y')
-		{
-			itoa(temp2, 10, temp_buff);
-			if(temp_buff[0] >= 48 && temp_buff[0] <= 57)
-			{
-				q[ind] = temp_buff[0];
-				ind++;
-			}
-			if(temp_buff[1] >= 48 && temp_buff[1] <= 57)
-			{
-				q[ind] = temp_buff[1];
-				ind++;
-			}
-			if(temp_buff[2] >= 48 && temp_buff[2] <= 57)
-			{
-				q[ind] = temp_buff[2];
-				ind++;
-			}
-			if(temp_buff[3] >= 48 && temp_buff[3] <= 57)
-			{
-				q[ind] = temp_buff[3];
-				ind++;
-			}
-
-			q[ind] = 0;
-			ind++;
-			temp = 0; 
-			temp2 = 0;
-			temp_buff[0] = 0;
-			temp_buff[1] = 0;
-			temp_buff[2] = 0;
-			temp_buff[3] = 0;
-
-		}
-
-		else if(asc == 'N')
-		{
-			a = ((short)temp2 & 0xFF00) / 0x00000100;
-			q[ind] = (char)a;
-
-			q[ind+1]  = (char)temp2 & 0xFF;
-			ind += 2;
-			temp = 0;
-		}
-	}
-	// Get AD1.2
-	if(ad1_2 == 'Y')
-	{
-		AD1CR = 0x00020FF04; // AD1.2
-		AD1CR |= 0x01000000; // start conversion
-		while((temp & 0x80000000) == 0)
-		{
-			temp = AD1DR;
-		}
-		temp &= 0x0000FFC0;
-		temp2 = temp / 0x00000040;
-
-		AD1CR = 0x00000000;
-
-		if(asc == 'Y')
-		{
-			itoa(temp2, 10, temp_buff);
-			if(temp_buff[0] >= 48 && temp_buff[0] <= 57)
-			{
-				q[ind] = temp_buff[0];
-				ind++;
-			}
-			if(temp_buff[1] >= 48 && temp_buff[1] <= 57)
-			{
-				q[ind] = temp_buff[1];
-				ind++;
-			}
-			if(temp_buff[2] >= 48 && temp_buff[2] <= 57)
-			{
-				q[ind] = temp_buff[2];
-				ind++;
-			}
-			if(temp_buff[3] >= 48 && temp_buff[3] <= 57)
-			{
-				q[ind] = temp_buff[3];
-				ind++;
-			}
-
-			q[ind] = 0;
-			ind++;
-			temp = 0; 
-			temp2 = 0;
-			temp_buff[0] = 0;
-			temp_buff[1] = 0;
-			temp_buff[2] = 0;
-			temp_buff[3] = 0;
-
-		}
-
-		else if(asc == 'N')
-		{
-			a = ((short)temp2 & 0xFF00) / 0x00000100;
-			q[ind] = (char)a;
-
-			q[ind+1]  = (char)temp2 & 0xFF;
-			ind += 2;
-			temp = 0;
-		}
-	}
-	// Get AD0.4
-	if(ad0_4 == 'Y')
-	{
-		AD0CR = 0x00020FF10; // AD0.4
-		AD0CR |= 0x01000000; // start conversion
-		while((temp & 0x80000000) == 0)
-		{
-			temp = AD0DR;
-		}
-		temp &= 0x0000FFC0;
-		temp2 = temp / 0x00000040;
-
-		AD0CR = 0x00000000;
-
-		if(asc == 'Y')
-		{
-			itoa(temp2, 10, temp_buff);
-			if(temp_buff[0] >= 48 && temp_buff[0] <= 57)
-			{
-				q[ind] = temp_buff[0];
-				ind++;
-			}
-			if(temp_buff[1] >= 48 && temp_buff[1] <= 57)
-			{
-				q[ind] = temp_buff[1];
-				ind++;
-			}
-			if(temp_buff[2] >= 48 && temp_buff[2] <= 57)
-			{
-				q[ind] = temp_buff[2];
-				ind++;
-			}
-			if(temp_buff[3] >= 48 && temp_buff[3] <= 57)
-			{
-				q[ind] = temp_buff[3];
-				ind++;
-			}
-
-			q[ind] = 0;
-			ind++;
-			temp = 0; 
-			temp2 = 0;
-			temp_buff[0] = 0;
-			temp_buff[1] = 0;
-			temp_buff[2] = 0;
-			temp_buff[3] = 0;
-
-		}
-
-		else if(asc == 'N')
-		{
-			a = ((short)temp2 & 0xFF00) / 0x00000100;
-			q[ind] = (char)a;
-
-			q[ind+1]  = (char)temp2 & 0xFF;
-			ind += 2;
-			temp = 0;
-		}
-	}
-	// Get AD1.7
-	if(ad1_7 == 'Y')
-	{
-		AD1CR = 0x00020FF80; // AD1.7
-		AD1CR |= 0x01000000; // start conversion
-		while((temp & 0x80000000) == 0)
-		{
-			temp = AD1DR;
-		}
-		temp &= 0x0000FFC0;
-		temp2 = temp / 0x00000040;
-
-		AD1CR = 0x00000000;
-
-		if(asc == 'Y')
-		{
-			itoa(temp2, 10, temp_buff);
-			if(temp_buff[0] >= 48 && temp_buff[0] <= 57)
-			{
-				q[ind] = temp_buff[0];
-				ind++;
-			}
-			if(temp_buff[1] >= 48 && temp_buff[1] <= 57)
-			{
-				q[ind] = temp_buff[1];
-				ind++;
-			}
-			if(temp_buff[2] >= 48 && temp_buff[2] <= 57)
-			{
-				q[ind] = temp_buff[2];
-				ind++;
-			}
-			if(temp_buff[3] >= 48 && temp_buff[3] <= 57)
-			{
-				q[ind] = temp_buff[3];
-				ind++;
-			}
-
-			q[ind] = 0;
-			ind++;
-			temp = 0; 
-			temp2 = 0;
-			temp_buff[0] = 0;
-			temp_buff[1] = 0;
-			temp_buff[2] = 0;
-			temp_buff[3] = 0;
-
-		}
-
-		else if(asc == 'N')
-		{
-			a = ((short)temp2 & 0xFF00) / 0x00000100;
-			q[ind] = (char)a;
-
-			q[ind+1]  = (char)temp2 & 0xFF;
-			ind += 2;
-			temp = 0;
-		}
-	}
-	// Get AD1.6
-	if(ad1_6 == 'Y')
-	{
-		AD1CR = 0x00020FF40; // AD1.3
-		AD1CR |= 0x01000000; // start conversion
-		while((temp & 0x80000000) == 0)
-		{
-			temp = AD1DR;
-		}
-		temp &= 0x0000FFC0;
-		temp2 = temp / 0x00000040;
-
-		AD1CR = 0x00000000;
-
-		if(asc == 'Y')
-		{
-			itoa(temp2, 10, temp_buff);
-			if(temp_buff[0] >= 48 && temp_buff[0] <= 57)
-			{
-				q[ind] = temp_buff[0];
-				ind++;
-			}
-			if(temp_buff[1] >= 48 && temp_buff[1] <= 57)
-			{
-				q[ind] = temp_buff[1];
-				ind++;
-			}
-			if(temp_buff[2] >= 48 && temp_buff[2] <= 57)
-			{
-				q[ind] = temp_buff[2];
-				ind++;
-			}
-			if(temp_buff[3] >= 48 && temp_buff[3] <= 57)
-			{
-				q[ind] = temp_buff[3];
-				ind++;
-			}
-
-			q[ind] = 0;
-			ind++;
-			temp = 0; 
-			temp2 = 0;
-			temp_buff[0] = 0;
-			temp_buff[1] = 0;
-			temp_buff[2] = 0;
-			temp_buff[3] = 0;
-
-		}
-
-		else if(asc == 'N')
-		{
-			a = ((short)temp2 & 0xFF00) / 0x00000100;
-			q[ind] = (char)a;
-
-			q[ind+1]  = (char)temp2 & 0xFF;
-			ind += 2;
-			temp = 0;
-		}
-	}
-
-	for(j = 0; j < ind; j++)
-	{
-		if(RX_in < 512)
-		{
-			RX_array1[RX_in] = q[j];
-			RX_in++;
-
-			if(RX_in == 512) log_array1 = 1;
-		}
-		else if(RX_in >= 512)
-		{
-			RX_array2[RX_in - 512] = q[j];
-			RX_in++;
-
-			if(RX_in == 1024)
-			{
-				log_array2 = 1;
-				RX_in = 0;
-			}
-		}
-	}
-	if(RX_in < 512)
-	{
-		if(asc == 'N') { RX_array1[RX_in] = '$'; }
-		else if(asc == 'Y'){ RX_array1[RX_in] = 13; }
-		RX_in++;
-
-		if(RX_in == 512) log_array1 = 1;
-	}
-	else if(RX_in >= 512)
-	{
-
-		if(asc == 'N') RX_array2[RX_in - 512] = '$';
-		else if(asc == 'Y'){ RX_array2[RX_in - 512] = 13; }
-		RX_in++;
-
-		if(RX_in == 1024)
-		{
-			log_array2 = 1;
-			RX_in = 0;
-		}
-	}
-	if(RX_in < 512)
-	{
-		if(asc == 'N') RX_array1[RX_in] = '$';
-		else if(asc == 'Y'){ RX_array1[RX_in] = 10; }
-		RX_in++;
-
-		if(RX_in == 512) log_array1 = 1;
-	}
-	else if(RX_in >= 512)
-	{
-
-		if(asc == 'N') RX_array2[RX_in - 512] = '$';
-		else if(asc == 'Y'){ RX_array2[RX_in - 512] = 10; }
-		RX_in++;
-
-		if(RX_in == 1024)
-		{
-			log_array2 = 1;
-			RX_in = 0;
-		}
-	}
-
-	VICVectAddr= 0;
-}
-
 void FIQ_Routine(void)
 {
 	char a;
@@ -1315,186 +743,6 @@ void statLight(int statLightnum, int onoff)
 	}
 }
 
-void Log_init(void)
-{
- 
-    
-
-	int x, mark = 0, ind = 0;
-	char temp, temp2 = 0, safety = 0;
-        char debug[128];
-/*
-	//dbgfd = root_open_new("DEBUG.txt");
-
-	if(root_file_exists("LOGCON.txt"))
-	{
-		write_debug("\n\rFound LOGCON.txt\n");
-		fd = root_open("LOGCON.txt");
-		stringSize = fat16_read_file(fd, (unsigned char *)stringBuf, 512);
-		stringBuf[stringSize] = '\0';
-		fat16_close_file(fd);
-                write_debug("Contents of LOGCON IS: \r\n");
-                write_debug(stringBuf);
-	}
-	else
-	{
-		write_debug("Couldn't find LOGCON.txt, creating...\n");
-		fd = root_open_new("LOGCON.txt");
-		if(fd == NULL)
-		{
-			write_debug("Error creating LOGCON.txt, locking up...\n\r");
-			while(1)
-			{
-				statLight(0,ON);
-				delay_ms(50);
-				statLight(0,OFF);
-				statLight(1,ON);
-				delay_ms(50);
-				statLight(1,OFF);
-			}
-		}
-    
-		strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 3\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
-		stringSize = strlen(stringBuf);
-		fat16_write_file(fd, (unsigned char*)stringBuf, stringSize);
-		sd_raw_sync();
-
-                //Set the time/                
-               set_time();
-
-	}
-     */
-
-    
-    strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 3\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
-    stringSize = strlen(stringBuf);
-
-	for(x = 0; x < stringSize; x++)
-	{
-		temp = stringBuf[x];
-		if(temp == 10)
-		{
-			mark = x;
-			ind++;
-			if(ind == 1)
-			{
-				mode = stringBuf[mark-2]-48; // 0 = auto uart, 1 = trigger uart, 2 = adc
-			}
-			else if(ind == 2)
-			{
-				asc = stringBuf[mark-2]; // default is 'N'
-				//rprintf("asc = %c\n\r",asc);
-			}
-			else if(ind == 3)
-			{
-				if(stringBuf[mark-2] == '1'){ baud = 1200; }
-				else if(stringBuf[mark-2] == '2'){ baud = 2400; }
-				else if(stringBuf[mark-2] == '3'){ baud = 4800; }
-				else if(stringBuf[mark-2] == '4'){ baud = 9600; }
-				else if(stringBuf[mark-2] == '5'){ baud = 19200; }
-				else if(stringBuf[mark-2] == '6'){ baud = 38400; }
-				else if(stringBuf[mark-2] == '7'){ baud = 57600; }
-				else if(stringBuf[mark-2] == '8'){ baud = 115200; }
-
-				//rprintf("baud = %d\n\r",baud);
-			}
-			else if(ind == 4)
-			{
-				freq = (stringBuf[mark-2]-48) + (stringBuf[mark-3]-48) * 10;
-				if((stringBuf[mark-4] >= 48) && (stringBuf[mark-4] < 58))
-				{
-					freq+= (stringBuf[mark-4]-48) * 100;
-					if((stringBuf[mark-5] >= 48) && (stringBuf[mark-5] < 58)){ freq += (stringBuf[mark-5]-48)*1000; }
-				}
-				//rprintf("freq = %d\n\r",freq);
-			}
-			else if(ind == 5)
-			{
-				trig = stringBuf[mark-2]; // default is $
-
-				//rprintf("trig = %c\n\r",trig);
-			}
-			else if(ind == 6)
-			{
-				frame = (stringBuf[mark-2]-48) + (stringBuf[mark-3]-48) * 10 + (stringBuf[mark-4]-48)*100;
-				if(frame > 510){ frame = 510; } // up to 510 characters
-				//rprintf("frame = %d\n\r",frame);
-			}
-			else if(ind == 7)
-			{
-				ad1_3 = stringBuf[mark-2]; // default is 'N'
-				if(ad1_3 == 'Y'){ temp2++; }
-				//rprintf("ad1_3 = %c\n\r",ad1_3);
-			}
-			else if(ind == 8)
-			{
-				ad0_3 = stringBuf[mark-2]; // default is 'N'
-				if(ad0_3 == 'Y'){ temp2++; }
-				//rprintf("ad0_3 = %c\n\r",ad0_3);
-			}
-			else if(ind == 9)
-			{
-				ad0_2 = stringBuf[mark-2]; // default is 'N'
-				if(ad0_2 == 'Y'){ temp2++; }
-				//rprintf("ad0_2 = %c\n\r",ad0_2);
-			}
-			else if(ind == 10)
-			{
-				ad0_1 = stringBuf[mark-2]; // default is 'N'
-				if(ad0_1 == 'Y'){ temp2++; }
-				//rprintf("ad0_1 = %c\n\r",ad0_1);
-			}
-			else if(ind == 11)
-			{
-				ad1_2 = stringBuf[mark-2]; // default is 'N'
-				if(ad1_2 == 'Y'){ temp2++; }
-				//rprintf("ad1_2 = %c\n\r",ad1_2);
-			}
-			else if(ind == 12)
-			{
-				ad0_4 = stringBuf[mark-2]; // default is 'N'
-				if(ad0_4 == 'Y'){ temp2++; }
-				//rprintf("ad0_4 = %c\n\r",ad0_4);
-			}
-			else if(ind == 13)
-			{
-				ad1_7 = stringBuf[mark-2]; // default is 'N'
-				if(ad1_7 == 'Y'){ temp2++; }
-				//rprintf("ad1_7 = %c\n\r",ad1_7);
-			}
-			else if(ind == 14)
-			{
-				ad1_6 = stringBuf[mark-2]; // default is 'N'
-				if(ad1_6 == 'Y'){ temp2++; }
-				//rprintf("ad1_6 = %c\n\r",ad1_6);
-			}
-			else if(ind == 15)
-			{
-				safety = stringBuf[mark-2]; // default is 'Y'
-				//rprintf("safety = %c\n\r",safety);
-	    	        }
-		}
-	}
-
-	if(safety == 'Y')
-	{
-		if((temp2 ==10) && (freq > 150)){ freq = 150; }
-		else if((temp2 == 9) && (freq > 166)){ freq = 166; }
-		else if((temp2 == 8) && (freq > 187)){ freq = 187; }
-		else if((temp2 == 7) && (freq > 214)){ freq = 214; }
-		else if((temp2 == 6) && (freq > 250)){ freq = 250; }
-		else if((temp2 == 5) && (freq > 300)){ freq = 300; }
-		else if((temp2 == 4) && (freq > 375)){ freq = 375; }
-		else if((temp2 == 3) && (freq > 500)){ freq = 500; }
-		else if((temp2 == 2) && (freq > 750)){ freq = 750; }
-		else if((temp2 == 1) && (freq > 1500)){ freq = 1500; }
-		else if((temp2 == 0)){ freq = 100; }
-	}
-
-	if(safety == 'T'){ test(); }
-
-}
-
 
 void mode_0(void) // Auto UART mode
 {
@@ -1509,40 +757,6 @@ void mode_0(void) // Auto UART mode
 
 }
 
-void mode_1(void)
-{
-	//rprintf("MODE 1\n\r");	
-
-	setup_uart0(baud,2);
-	stringSize = frame + 2;
-
-	mode_action();
-}
-
-void mode_2(void)
-{
-	//rprintf("MODE 2\n\r");	
-	enableIRQ();
-	// Timer0  interrupt is an IRQ interrupt
-	VICIntSelect &= ~0x00000010;
-	// Enable Timer0 interrupt
-	VICIntEnable |= 0x00000010;
-	// Use slot 2 for UART0 interrupt
-	VICVectCntl2 = 0x24;
-	// Set the address of ISR for slot 1
-	VICVectAddr2 = (unsigned int)MODE2ISR;
-
-	T0TCR = 0x00000002;	// Reset counter and prescaler
-	T0MCR = 0x00000003;	// On match reset the counter and generate interrupt
-	T0MR0 = 58982400 / freq;
-
-	T0PR = 0x00000000;
-
-	T0TCR = 0x00000001; // enable timer
-
-	stringSize = 512;
-	mode_action();
-}
 
 void mode_action(void)
 {
@@ -1555,8 +769,8 @@ void mode_action(void)
 		if(log_array1 == 1)
 		{
 			statLight(0,ON);
-			strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 4\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
-			stringSize = strlen(stringBuf);
+			//strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 4\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
+			//stringSize = strlen(stringBuf);
 			if(fat16_write_file(handle,(unsigned char *)RX_array1, stringSize) < 0)
 			{
 				while(1)
@@ -1628,56 +842,6 @@ void mode_action(void)
 
 }
 
-void test(void)
-{
-
-	rprintf("\n\rLogomatic V2 Test Code:\n\r");
-	rprintf("ADC Test will begin in 5 seconds, hit stop button to terminate the test.\r\n\n");
-
-	delay_ms(5000);
-
-	while((IOPIN0 & 0x00000008) == 0x00000008)
-	{
-		// Get AD1.3
-		AD1CR = 0x0020FF08;
-		AD_conversion(1);
-
-		// Get AD0.3
-		AD0CR = 0x0020FF08;
-		AD_conversion(0);
-
-		// Get AD0.2
-		AD0CR = 0x0020FF04;
-		AD_conversion(0);
-
-		// Get AD0.1
-		AD0CR = 0x0020FF02;
-		AD_conversion(0);
-
-		// Get AD1.2
-		AD1CR = 0x0020FF04;
-		AD_conversion(1);
-
-		// Get AD0.4
-		AD0CR = 0x0020FF10;
-		AD_conversion(0);
-
-		// Get AD1.7
-		AD1CR = 0x0020FF80;
-		AD_conversion(1);
-
-		// Get AD1.6
-		AD1CR = 0x0020FF40;
-		AD_conversion(1);
-
-		delay_ms(1000);
-		rprintf("\n\r");
-	}
-
-	rprintf("\n\rTest complete, locking up...\n\r");
-	while(1);
-
-}
 
 void AD_conversion(int regbank)
 {
@@ -1726,6 +890,7 @@ void fat_initialize(void)
 		//rprintf("SD OpenRoot Error\n\r");
 	}
 }
+
 /*
 void write_debug(char *debug)
 {
@@ -1734,6 +899,7 @@ void write_debug(char *debug)
 	sd_raw_sync();
 }
 */
+
 void flashBoobies(int num_of_times)
 {
 	// Flash Status Lights
