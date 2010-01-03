@@ -155,6 +155,8 @@ struct timestamp * get_time(void);
 #define devNum 0x00
 #define rate  0x1f86 //HRM
 
+#define write_debug(x);
+
 void ANTAP1_Config (void)
 {
     set_time();
@@ -460,7 +462,7 @@ int main (void)
 	Log_init();
 
 	count++;
-	string_printf(name,"LOF%02d.txt",count);
+	string_printf(name,"LOG%02d.txt",count);
 	while(root_file_exists(name))
 	{
 		count++;
@@ -1315,11 +1317,14 @@ void statLight(int statLightnum, int onoff)
 
 void Log_init(void)
 {
+ 
+    
+
 	int x, mark = 0, ind = 0;
 	char temp, temp2 = 0, safety = 0;
         char debug[128];
-
-	dbgfd = root_open_new("DEBUG.txt");
+/*
+	//dbgfd = root_open_new("DEBUG.txt");
 
 	if(root_file_exists("LOGCON.txt"))
 	{
@@ -1348,16 +1353,21 @@ void Log_init(void)
 				statLight(1,OFF);
 			}
 		}
+    
 		strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 3\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
 		stringSize = strlen(stringBuf);
 		fat16_write_file(fd, (unsigned char*)stringBuf, stringSize);
 		sd_raw_sync();
 
-                //Set the time
-                set_time();
-
+                //Set the time/                
+               set_time();
 
 	}
+     */
+
+    
+    strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 3\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
+    stringSize = strlen(stringBuf);
 
 	for(x = 0; x < stringSize; x++)
 	{
@@ -1387,11 +1397,6 @@ void Log_init(void)
 				else if(stringBuf[mark-2] == '8'){ baud = 115200; }
 
 				//rprintf("baud = %d\n\r",baud);
-                               
-                                //baud = 4800; 
-                                sprintf(debug, "baud = %d\n\r", baud);
-                                write_debug(debug);
-                                 
 			}
 			else if(ind == 4)
 			{
@@ -1721,14 +1726,14 @@ void fat_initialize(void)
 		//rprintf("SD OpenRoot Error\n\r");
 	}
 }
-
+/*
 void write_debug(char *debug)
 {
 	stringSize = strlen(debug);
 	fat16_write_file(dbgfd, (unsigned char*)debug, stringSize);
 	sd_raw_sync();
 }
-
+*/
 void flashBoobies(int num_of_times)
 {
 	// Flash Status Lights
