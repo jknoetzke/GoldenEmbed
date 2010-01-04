@@ -118,7 +118,6 @@ void UNDEF_Routine(void) __attribute__ ((interrupt("UNDEF")));
 
 void fat_initialize(void);
 
-void write_debug(char *debug);
 void delay_ms(int count);
 void flashBoobies(int num_of_times);
 
@@ -131,6 +130,7 @@ void ANTAP1_SetChPeriod(void);
 void ANTAP1_OpenCh(void);
 void ANTAP1_AssignNetwork(void);
 void ANTAP1_SetSearchTimeout(void);
+void ANTAP1_RequestChanID(void);
 void set_time(void);
 struct timestamp get_time(void);
 
@@ -140,8 +140,6 @@ struct timestamp get_time(void);
 #define netNum    0x00    // NetNum
 #define devNum 0x00
 #define rate  0x1f86 //HRM
-
-#define write_debug(x);
 
 void ANTAP1_Config (void)
 {
@@ -160,6 +158,8 @@ void ANTAP1_Config (void)
     delay_ms(50);
     ANTAP1_SetChPeriod();
     delay_ms(50);
+    //ANTAP1_RequestChanID();
+    //delay_ms(50);
     ANTAP1_OpenCh();
     delay_ms(50);
 
@@ -171,9 +171,6 @@ void ANTAP1_SetSearchTimeout(void)
 {
     unsigned char i;
     unsigned char setup[6];
-    char *p, debug[128];
-    
-    p = debug;
 
     setup[0] = 0xa4; // SYNC Byte
     setup[1] = 0x02; // LENGTH Byte
@@ -183,15 +180,7 @@ void ANTAP1_SetSearchTimeout(void)
     setup[5] = (0xa4^0x02^0x44^0x00^0x1e);
     
     for(i = 0 ; i < 6 ; i++)
-    {
        putc_serial0(setup[i]);
-       sprintf(p, "[0x%02x]", setup[i]);
-       p += strlen(p);       
-    }
-
-    write_debug("ANTAP1_SetSearchTimeout: ");
-    write_debug(debug);
-    write_debug("\r\n");    
    
 }
 
@@ -201,10 +190,7 @@ void ANTAP1_Reset (void)
 {
     unsigned char i;
     unsigned char setup[5];
-    char *p, debug[128];
     
-    p = debug;
-
     setup[0] = 0xa4; // SYNC Byte
     setup[1] = 0x01; // LENGTH Byte
     setup[2] = 0x4a; // ID Byte
@@ -212,24 +198,13 @@ void ANTAP1_Reset (void)
     setup[4] = 0xef; // Checksum
     
     for(i = 0 ; i < 5 ; i++)
-    {
        putc_serial0(setup[i]);
-       sprintf(p, "[0x%02x]", setup[i]);
-       p += strlen(p);       
-    }
-
-    write_debug("ANTAP1_Reset Sending: ");
-    write_debug(debug);
-    write_debug("\r\n");    
-
 }
 
 void ANTAP1_AssignNetwork(void)
 {
     unsigned char i;
     unsigned char setup[13];
-    char *p, debug[256];
-    p = debug;
 
     setup[0] = 0xa4; //Sync
     setup[1] = 0x09; //Length
@@ -246,14 +221,7 @@ void ANTAP1_AssignNetwork(void)
     setup[12] = (0xa4^0x09^MESG_NETWORK_KEY_ID^0x00^0xb9^0xa5^0x21^0xfb^0xbd^0x72^0xc3^0x45);
     
     for(i = 0 ; i < 13 ; i++)
-    {
       putc_serial0(setup[i]);
-      sprintf(p, "[0x%02x]", setup[i]);
-      p += strlen(p);       
-    }
-    write_debug("ANTAP1_AssignNetwork Sending: ");
-    write_debug(debug);
-    write_debug("\r\n");    
 }
 
 
@@ -262,9 +230,6 @@ void ANTAP1_AssignCh (void)
 {
     unsigned char i;
     unsigned char setup[7];
-    char *p, debug[128];
-    p = debug;
-
    
     setup[0] = 0xa4;
     setup[1] = 0x03;
@@ -275,14 +240,7 @@ void ANTAP1_AssignCh (void)
     setup[6] = (0xa4^0x03^0x42^chanNum^chanType^netNum);
     
     for(i = 0 ; i < 7 ; i++)
-    {
       putc_serial0(setup[i]);
-      sprintf(p, "[0x%02x]", setup[i]);
-      p += strlen(p);       
-    }
-    write_debug("ANTAP1_AssignCh Sending: ");
-    write_debug(debug);
-    write_debug("\r\n");    
 }
 
 // Assigns CH=0, RF Freq
@@ -290,9 +248,6 @@ void ANTAP1_SetChRFFreq (void)
 {
     unsigned char i;
     unsigned char setup[6];
-    char *p, debug[128];
-    p = debug;
-
    
     setup[0] = 0xa4;
     setup[1] = 0x02;
@@ -302,32 +257,31 @@ void ANTAP1_SetChRFFreq (void)
     setup[5] = (0xa4^0x02^0x45^0x00^0x39);
     
     for(i = 0 ; i < 6 ; i++)
-    {
         putc_serial0(setup[i]);
-        sprintf(p, "[0x%02x]", setup[i]);
-        p += strlen(p);       
-    }
 
-    write_debug("ANTAP1_ChRFFeq Sending: ");
-    write_debug(debug);
-    write_debug("\r\n");    
 }
 
-// CH=0, Mesg Period = 128Hz [256]
-// CH=0, Mesg Period = 128Hz [256]
+// Assigns CH=0, RF Freq
+void ANTAP1_RequestChanID(void) 
+{
+    unsigned char i;
+    unsigned char setup[6];
+    
+    setup[0] = 0xa4;
+    setup[1] = 0x02;
+    setup[2] = 0x4d;
+    setup[3] = 0x00;        // ChanNum
+    setup[4] = 0x54;        //Extra Info
+    setup[5] = (0xa4^0x02^0x4d^0x00^0x54);
+    
+    for(i = 0 ; i < 6 ; i++)
+        putc_serial0(setup[i]);
+}
+
 void ANTAP1_SetChPeriod (void) 
 {
     unsigned char i;
     unsigned char setup[7];
-    unsigned char rateMSB, rateLSB;
-    char *p, debug[128];
-    p = debug;
-    
-    rateMSB = (unsigned char)((32768/rate)>>8 & 0xff);
-    rateLSB = (unsigned char)((32768/rate) & 0xff);
-    
-//    rateLSB = 0x99;
-//    rateMSB = 0x01;
     
     setup[0] = 0xa4;
     setup[1] = 0x03;
@@ -338,15 +292,7 @@ void ANTAP1_SetChPeriod (void)
     setup[6] = (0xa4^0x03^0x43^0x00^0x86^0x1f);
     
     for(i = 0 ; i < 7 ; i++)
-    {
          putc_serial0(setup[i]);
-         sprintf(p, "[0x%02x]", setup[i]);
-         p += strlen(p);       
-    }
- 
-    write_debug("ANTAP1_ChPeriod Sending: ");
-    write_debug(debug);
-    write_debug("\r\n");    
   
 }
 
@@ -355,13 +301,6 @@ void ANTAP1_SetChId (void)
 {
     unsigned char i;
     unsigned char setup[9];
-    unsigned char devNumMSB, devNumLSB;
-    char *p, debug[128];
-    p = debug;
-
-    
-    devNumMSB = (devNum >> 8) & 0xff;
-    devNumLSB = devNum & 0xff;
     
     setup[0] = 0xa4;
     setup[1] = 0x05;
@@ -374,16 +313,7 @@ void ANTAP1_SetChId (void)
     setup[8] = (0xa4^0x05^0x51^0x00^0x00^0x00^0x00^0x00);
     
     for(i = 0 ; i < 9 ; i++)
-    { 
        putc_serial0(setup[i]);
-       sprintf(p, "[0x%02x]", setup[i]);
-       p += strlen(p);       
-    }
- 
-    write_debug("ANTAP1_SetChID Sending: ");
-    write_debug(debug);
-    write_debug("\r\n");    
-
 }
 
 // Opens CH 0
@@ -391,9 +321,6 @@ void ANTAP1_OpenCh (void)
 {
     unsigned char i;
     unsigned char setup[5];
-    char *p, debug[128];
-    p = debug;
-
     
     setup[0] = 0xa4;
     setup[1] = 0x01;
@@ -402,15 +329,7 @@ void ANTAP1_OpenCh (void)
     setup[4] = (0xa4^0x01^0x4b^0x00);
     
     for(i = 0 ; i < 5 ; i++)
-    { 
       putc_serial0(setup[i]);
-      sprintf(p, "[0x%02x]", setup[i]);
-      p += strlen(p);       
-    }
- 
-    write_debug("ANTAP1_OpenCH Sending: ");
-    write_debug(debug);
-    write_debug("\r\n");    
 
 }
 
@@ -498,10 +417,6 @@ struct timestamp get_time(void)
        
        CCR = 0x11; //enable RTC, keep xtal flag true 
 
-       char debug[128];
-       sprintf(debug, "The current time is: YEAR: %d MONTH: %d DAY: %d HOUR: %d MIN: %d SEC: %d\r\n", YEAR, MONTH, DOM, HOUR, MIN, SEC);
-       write_debug(debug);
-
        return ts;
 
 }
@@ -524,10 +439,6 @@ void set_time(void)
        
        CCR = 0x11; //enable RTC, keep xtal flag true 
 
-       char debug[128];
-       sprintf(debug, "Setting time to: YEAR: %d MONTH: %d DAY: %d HOUR: %d MIN: %d SEC: %d\r\n", YEAR, MONTH, DOM, HOUR, MIN, SEC);
-       write_debug(debug);
-
 }
 
 
@@ -542,7 +453,7 @@ void Initialize(void)
 {
 	//rprintf_devopen(putc_serial0);
 
-        init_serial0(4800);
+    init_serial0(4800);
 	PINSEL0 = 0xCF351505;
 	PINSEL1 = 0x15441801;
 	IODIR0 |= 0x00000884;
@@ -746,31 +657,22 @@ void statLight(int statLightnum, int onoff)
 
 void mode_0(void) // Auto UART mode
 {
-	write_debug("MODE 0\n\r");
-	//rprintf("MODE 0\n\r");
 	setup_uart0(baud,1);
 	stringSize = 512;
 	ANTAP1_Config();
-        mode_action();
-	write_debug("Exit mode 0\n\r");
-	//rprintf("Exit mode 0\n\r");
-
+    mode_action();
 }
 
 
 void mode_action(void)
 {
 	int j;
-	write_debug("mode_action\r\n");
-	//rprintf("mode_action\r\n");
 	while(1)
 	{
 
 		if(log_array1 == 1)
 		{
 			statLight(0,ON);
-			//strcpy(stringBuf, "MODE = 0\r\nASCII = N\r\nBaud = 4\r\nFrequency = 100\r\nTrigger Character = $\r\nText Frame = 100\r\nAD1.3 = N\r\nAD0.3 = N\r\nAD0.2 = N\r\nAD0.1 = N\r\nAD1.2 = N\r\nAD0.4 = N\r\nAD1.7 = N\r\nAD1.6 = N\r\nSaftey On = Y\r\n");
-			//stringSize = strlen(stringBuf);
 			if(fat16_write_file(handle,(unsigned char *)RX_array1, stringSize) < 0)
 			{
 				while(1)
@@ -792,11 +694,8 @@ void mode_action(void)
 		if(log_array2 == 1)
 		{
 			statLight(1,ON);
-
-			write_debug("About to write to a file..\r\n");
-			//rprintf("About to write to a file..\r\n");
 			
-                        if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
+            if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
 			{
 				while(1)
 				{
