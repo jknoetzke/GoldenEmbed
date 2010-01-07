@@ -367,7 +367,7 @@ int main (void)
 	//Log_init();
 
 	count++;
-	string_printf(name,"LOG%02d.txt",count);
+	string_printf(name,"ANT%02d.gce",count);
 	while(root_file_exists(name))
 	{
 		count++;
@@ -385,7 +385,7 @@ int main (void)
 			}
 
 		}
-		string_printf(name,"LOG%02d.txt",count);
+		string_printf(name,"ANT%02d.gce",count);
 	}
 
 
