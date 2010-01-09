@@ -67,6 +67,7 @@
 #define rate  0x1f86 //HRM
 #define MESG_NETWORK_KEY_ID	 0x46
 #define MESG_TX_SYNC 0xa4
+#define MESG_BROADCAST_DATA_ID 0x4E
 
 #define FALSE 0
 #define TRUE 1
@@ -81,13 +82,14 @@ char get_frame = 0;
 
 signed int stringSize;
 struct fat16_file_struct * handle; //Actual Log File.
-//struct fat16_file_struct * dbgfd; //Debug Log File.
 char stringBuf[256];
 static struct timestamp ts;
 
 int inMsg = FALSE;
 int msgN = 0;
 int size = 0;
+int seen = FALSE;
+int isBroadCast = FALSE;
 
 
 // Default Settings
@@ -149,8 +151,6 @@ void set_time(void);
 void get_time(void);
 int parseANT(unsigned char chr);
 void add_time_stamp(void);
-
-//void write_debug(char *debug);
 
 
 void ANTAP1_Config (void)
@@ -278,8 +278,8 @@ void ANTAP1_RequestChanID(void)
     setup[1] = 0x02;
     setup[2] = 0x4d;
     setup[3] = 0x00;        // ChanNum
-    setup[4] = 0x54;        //Extra Info
-    setup[5] = (0xa4^0x02^0x4d^0x00^0x54);
+    setup[4] = 0x51;        //Extra Info
+    setup[5] = (0xa4^0x02^0x4d^0x00^0x51);
     
     for(i = 0 ; i < 6 ; i++)
         putc_serial0(setup[i]);
@@ -393,8 +393,7 @@ int main (void)
     }
 
     handle = root_open_new(name);
-    //dbgfd = root_open_new("DEBUG.txt");
-
+  
     sd_raw_sync();  
 	
     set_time();
@@ -418,12 +417,6 @@ void get_time(void)
     ts.second = SEC;
     
     CCR = 0x11; //enable RTC, keep xtal flag true 
-    /*
-     char debug[32];
-     int sec = ts.second;
-     string_printf(debug,"Sec: %d\n",sec);
-     write_debug(debug);
-*/
 }
 
 
@@ -508,6 +501,11 @@ static void UART0ISR(void)
         {
             get_time(); //It's the end of a MESG, get the time.
 		    add_time_stamp(); //Add the time to the end of the MESG.
+            if(isBroadCast == TRUE && seen == FALSE)
+            {
+               seen = TRUE;
+               ANTAP1_RequestChanID();
+            }
 	    }
     }
 	else if(RX_in >= 512)
@@ -516,6 +514,11 @@ static void UART0ISR(void)
         {
             get_time();
 		    add_time_stamp();
+            if(isBroadCast == TRUE && seen == FALSE)
+            {
+               seen = TRUE;
+               ANTAP1_RequestChanID();
+            }
 	    }
 	}
 }
@@ -914,6 +917,15 @@ int parseANT(unsigned char chr)
         msgN++;
         size = chr;
     }
+    else if(msgN == 2)
+    {
+        if(seen == FALSE)
+        {
+            if(chr == MESG_BROADCAST_DATA_ID)
+               isBroadCast = TRUE;
+        }
+        msgN++;
+    }
     else if (msgN == (size + 3)) // sync, size, checksum
     {                           
         //Write the time.
@@ -927,13 +939,4 @@ int parseANT(unsigned char chr)
     }
     
     return 0; 
-}       
-
-/*
-void write_debug(char *debug)
-{
-	fat16_write_file(dbgfd, (unsigned char*)debug, strlen(debug));
-	sd_raw_sync();
 }
-*/
-
