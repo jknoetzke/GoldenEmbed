@@ -60,10 +60,10 @@
 #define ON      1
 #define OFF     0
 
-#define chanNum   0x00        // ChanNum
+//#define chanNum   0x00        // ChanNum
 #define chanType  0x00 // ChanType
 #define netNum    0x00    // NetNum
-#define devNum 0x00
+//#define devNum 0x00
 #define rate  0x1f86 //HRM
 #define MESG_NETWORK_KEY_ID	 0x46
 #define MESG_TX_SYNC 0xa4
@@ -83,13 +83,14 @@ char get_frame = 0;
 signed int stringSize;
 struct fat16_file_struct * handle; //Actual Log File.
 char stringBuf[256];
-static struct timestamp ts;
+struct timestamp ts;
 
 int inMsg = FALSE;
 int msgN = 0;
 int size = 0;
-int seen = FALSE;
-int isBroadCast = FALSE;
+int seen[2];
+int isBroadCast[2];
+int lastMsgBroadCast = FALSE;
 
 
 // Default Settings
@@ -139,14 +140,14 @@ void flashBoobies(int num_of_times);
 
 void ANTAP1_Config(void);
 void ANTAP1_Reset(void);
-void ANTAP1_AssignCh(void);
-void ANTAP1_SetChId(void);
-void ANTAP1_SetChRFFreq(void);
-void ANTAP1_SetChPeriod(void);
-void ANTAP1_OpenCh(void);
-void ANTAP1_AssignNetwork(void);
-void ANTAP1_SetSearchTimeout(void);
-void ANTAP1_RequestChanID(void);
+void ANTAP1_AssignCh(unsigned char);
+void ANTAP1_SetChId(unsigned char, unsigned char deviceType);
+void ANTAP1_SetChRFFreq(unsigned char);
+void ANTAP1_SetChPeriod(unsigned char, unsigned char);
+void ANTAP1_OpenCh(unsigned char);
+void ANTAP1_AssignNetwork(unsigned char);
+void ANTAP1_SetSearchTimeout(unsigned char);
+void ANTAP1_RequestChanID(unsigned char);
 void set_time(void);
 void get_time(void);
 int parseANT(unsigned char chr);
@@ -157,24 +158,42 @@ void ANTAP1_Config (void)
 {
     ANTAP1_Reset();
     delay_ms(50);
-    ANTAP1_AssignCh();
+    
+    //HR
+    ANTAP1_AssignCh(0x00);
     delay_ms(50);
-    ANTAP1_SetChId();
+    ANTAP1_SetChId(0x00,0x78); //0x78 == HR type
     delay_ms(50);
-    ANTAP1_AssignNetwork();
+    ANTAP1_AssignNetwork(0x00);
     delay_ms(50);
-    ANTAP1_SetSearchTimeout();
+    ANTAP1_SetSearchTimeout(0x00);
     delay_ms(50);
-    ANTAP1_SetChRFFreq();
+    ANTAP1_SetChRFFreq(0x00);
     delay_ms(50);
-    ANTAP1_SetChPeriod();
+    ANTAP1_SetChPeriod(0x00, 0x86);
     delay_ms(50);
-    ANTAP1_OpenCh();
+    ANTAP1_OpenCh(0x00);
+    delay_ms(50);
+
+    //Power
+    ANTAP1_AssignCh(0x01);
+    delay_ms(50);
+    ANTAP1_SetChId(0x01,0x0B); // 0x0B == Power Type
+    delay_ms(50);
+    ANTAP1_AssignNetwork(0x01);
+    delay_ms(50);
+    ANTAP1_SetSearchTimeout(0x01);
+    delay_ms(50);
+    ANTAP1_SetChRFFreq(0x01);
+    delay_ms(50);
+    ANTAP1_SetChPeriod(0x01, 0xf6);
+    delay_ms(50);
+    ANTAP1_OpenCh(0x01);
     delay_ms(50);
 }
 
 
-void ANTAP1_SetSearchTimeout(void)
+void ANTAP1_SetSearchTimeout(unsigned char chan)
 {
     unsigned char i;
     unsigned char setup[6];
@@ -182,9 +201,9 @@ void ANTAP1_SetSearchTimeout(void)
     setup[0] = 0xa4; // SYNC Byte
     setup[1] = 0x02; // LENGTH Byte
     setup[2] = 0x44; // ID Byte
-    setup[3] = 0x00; // Data Byte N (N=LENGTH)
-    setup[4] = 0x1e; // Checksum
-    setup[5] = (0xa4^0x02^0x44^0x00^0x1e);
+    setup[3] = chan; // Channel
+    setup[4] = 0x1e;
+    setup[5] = (0xa4^0x02^0x44^chan^0x1e);  // Checksum
     
     for(i = 0 ; i < 6 ; i++)
        putc_serial0(setup[i]);
@@ -208,7 +227,7 @@ void ANTAP1_Reset (void)
        putc_serial0(setup[i]);
 }
 
-void ANTAP1_AssignNetwork(void)
+void ANTAP1_AssignNetwork(unsigned char chan)
 {
     unsigned char i;
     unsigned char setup[13];
@@ -216,7 +235,7 @@ void ANTAP1_AssignNetwork(void)
     setup[0] = 0xa4; //Sync
     setup[1] = 0x09; //Length
     setup[2] = MESG_NETWORK_KEY_ID;
-    setup[3] = 0x00; // network number 
+    setup[3] = chan; //chan 
     setup[4] = 0xb9;
     setup[5] = 0xa5;     
     setup[6] = 0x21;    
@@ -225,7 +244,7 @@ void ANTAP1_AssignNetwork(void)
     setup[9] = 0x72; 
     setup[10] = 0xc3; 
     setup[11] = 0x45; 
-    setup[12] = (0xa4^0x09^MESG_NETWORK_KEY_ID^0x00^0xb9^0xa5^0x21^0xfb^0xbd^0x72^0xc3^0x45);
+    setup[12] = (0xa4^0x09^MESG_NETWORK_KEY_ID^chan^0xb9^0xa5^0x21^0xfb^0xbd^0x72^0xc3^0x45);
     
     for(i = 0 ; i < 13 ; i++)
       putc_serial0(setup[i]);
@@ -233,7 +252,7 @@ void ANTAP1_AssignNetwork(void)
 
 
 // Assigns CH=0, CH Type=00(RX), Net#=0
-void ANTAP1_AssignCh (void) 
+void ANTAP1_AssignCh (unsigned char chan) 
 {
     unsigned char i;
     unsigned char setup[7];
@@ -241,17 +260,16 @@ void ANTAP1_AssignCh (void)
     setup[0] = 0xa4;
     setup[1] = 0x03;
     setup[2] = 0x42;
-    setup[3] = chanNum;        // ChanNum
+    setup[3] = chan;        // ChanNum
     setup[4] = chanType;    // ChanType
     setup[5] = netNum;        // NetNum
-    setup[6] = (0xa4^0x03^0x42^chanNum^chanType^netNum);
+    setup[6] = (0xa4^0x03^0x42^chan^chanType^netNum);
     
     for(i = 0 ; i < 7 ; i++)
       putc_serial0(setup[i]);
 }
 
-// Assigns CH=0, RF Freq
-void ANTAP1_SetChRFFreq (void) 
+void ANTAP1_SetChRFFreq (unsigned char chan) 
 {
     unsigned char i;
     unsigned char setup[6];
@@ -259,9 +277,9 @@ void ANTAP1_SetChRFFreq (void)
     setup[0] = 0xa4;
     setup[1] = 0x02;
     setup[2] = 0x45;
-    setup[3] = 0x00;        // ChanNum
+    setup[3] = chan;        // ChanNum
     setup[4] = 0x39;        // RF Freq
-    setup[5] = (0xa4^0x02^0x45^0x00^0x39);
+    setup[5] = (0xa4^0x02^0x45^chan^0x39);
     
     for(i = 0 ; i < 6 ; i++)
         putc_serial0(setup[i]);
@@ -269,7 +287,7 @@ void ANTAP1_SetChRFFreq (void)
 }
 
 // Assigns CH=0, RF Freq
-void ANTAP1_RequestChanID(void) 
+void ANTAP1_RequestChanID(unsigned char chan) 
 {
     unsigned char i;
     unsigned char setup[6];
@@ -277,26 +295,31 @@ void ANTAP1_RequestChanID(void)
     setup[0] = 0xa4;
     setup[1] = 0x02;
     setup[2] = 0x4d;
-    setup[3] = 0x00;        // ChanNum
+    setup[3] = chan;        // ChanNum
     setup[4] = 0x51;        //Extra Info
-    setup[5] = (0xa4^0x02^0x4d^0x00^0x51);
+    setup[5] = (0xa4^0x02^0x4d^chan^0x51);
     
     for(i = 0 ; i < 6 ; i++)
         putc_serial0(setup[i]);
 }
 
-void ANTAP1_SetChPeriod (void) 
+void ANTAP1_SetChPeriod (unsigned char chan, unsigned char device) 
 {
     unsigned char i;
     unsigned char setup[7];
+    /*
+    unsigned char HR = 0x86;
+    unsigned char PM = 0xf6;
     
+    unsigned char device = PM;
+    */
     setup[0] = 0xa4;
     setup[1] = 0x03;
     setup[2] = 0x43;
-    setup[3] = 0x00;
-    setup[4] = 0x86;
+    setup[3] = chan;
+    setup[4] = device;
     setup[5] = 0x1f;
-    setup[6] = (0xa4^0x03^0x43^0x00^0x86^0x1f);
+    setup[6] = (0xa4^0x03^0x43^chan^device^0x1f);
     
     for(i = 0 ; i < 7 ; i++)
         putc_serial0(setup[i]);
@@ -304,7 +327,7 @@ void ANTAP1_SetChPeriod (void)
 }
 
 // Assigns Device#=0000 (wildcard), Device Type ID=00 (wildcard), Trans Type=00 (wildcard)
-void ANTAP1_SetChId (void) 
+void ANTAP1_SetChId (unsigned char chan, unsigned char deviceType) 
 {
     unsigned char i;
     unsigned char setup[9];
@@ -312,19 +335,19 @@ void ANTAP1_SetChId (void)
     setup[0] = 0xa4;
     setup[1] = 0x05;
     setup[2] = 0x51;
-    setup[3] = 0x00;
+    setup[3] = chan;
     setup[4] = 0x00;
     setup[5] = 0x00;
-    setup[6] = 0x00;
+    setup[6] = deviceType;
     setup[7] = 0x00;
-    setup[8] = (0xa4^0x05^0x51^0x00^0x00^0x00^0x00^0x00);
+    setup[8] = (0xa4^0x05^0x51^chan^0x00^0x00^deviceType^0x00);
     
     for(i = 0 ; i < 9 ; i++)
        putc_serial0(setup[i]);
 }
 
 // Opens CH 0
-void ANTAP1_OpenCh (void) 
+void ANTAP1_OpenCh (unsigned char chan) 
 {
     unsigned char i;
     unsigned char setup[5];
@@ -332,8 +355,8 @@ void ANTAP1_OpenCh (void)
     setup[0] = 0xa4;
     setup[1] = 0x01;
     setup[2] = 0x4b;
-    setup[3] = 0x00;
-    setup[4] = (0xa4^0x01^0x4b^0x00);
+    setup[3] = chan;
+    setup[4] = (0xa4^0x01^0x4b^chan);
     
     for(i = 0 ; i < 5 ; i++)
       putc_serial0(setup[i]);
@@ -351,6 +374,11 @@ int main (void)
     int i;
     char name[32];
     int count = 0;
+    
+    seen[0] = FALSE;
+    seen[1] = FALSE;
+    isBroadCast[0] = FALSE;
+    isBroadCast[1] = FALSE; //Ya, ya memcpy
 
     enableFIQ();
 
@@ -358,6 +386,8 @@ int main (void)
 
     fat_initialize();               
 
+    set_time();
+    
     setup_uart0(4800, 0);
 
     // Flash Status Lights
@@ -396,7 +426,7 @@ int main (void)
   
     sd_raw_sync();  
 	
-    set_time();
+    //set_time();
 
     mode_0();
 
@@ -406,37 +436,30 @@ int main (void)
 //Set the time
 void get_time(void)
 {
-    
-    //Test to see if you can create a timestamp.
-    PCONP |= (1<<9); //make sure RTC is powered, just to be sure 
-    CCR = 0x12; //disable RTC, set xtal flag true 
-    
-    //get time registers 
+    int foo = YEAR;
+    foo = MONTH;
+    foo = DOM;
     ts.hour = HOUR;
     ts.minute = MIN;
     ts.second = SEC;
-    
-    CCR = 0x11; //enable RTC, keep xtal flag true 
 }
 
 
 //Set the time
 void set_time(void)
 {
-    //Test to see if you can create a timestamp.
-    PCONP |= (1<<9); //make sure RTC is powered, just to be sure 
-    CCR = 0x12; //disable RTC, set xtal flag true 
-    
-    //update time registers 
-    YEAR = 2010; 
-    MONTH = 1;
-    DOM = 1;
-    HOUR = 10;
-    MIN = 20;
-    SEC = 30;
-    
-    CCR = 0x11; //enable RTC, keep xtal flag true 
-    
+  //Turn on timer 1, 60MHz by default  
+  T1TCR=0x01; 
+  CCR=0x13; 
+  YEAR=0; 
+  MONTH=0; 
+  DOM=0; 
+  DOW=0; 
+  DOY=0; 
+  HOUR=0; 
+  MIN=0; 
+  SEC=0; 
+  CCR=0x11;     
 }
 
 
@@ -501,11 +524,13 @@ static void UART0ISR(void)
         {
             get_time(); //It's the end of a MESG, get the time.
 		    add_time_stamp(); //Add the time to the end of the MESG.
+		    /*
             if(isBroadCast == TRUE && seen == FALSE)
             {
                seen = TRUE;
-               ANTAP1_RequestChanID();
+               ANTAP1_RequestChanID(0x00);
             }
+            */
 	    }
     }
 	else if(RX_in >= 512)
@@ -514,11 +539,13 @@ static void UART0ISR(void)
         {
             get_time();
 		    add_time_stamp();
+		    /*
             if(isBroadCast == TRUE && seen == FALSE)
             {
                seen = TRUE;
-               ANTAP1_RequestChanID();
+               ANTAP1_RequestChanID(0x00);
             }
+            */
 	    }
 	}
 }
@@ -919,11 +946,13 @@ int parseANT(unsigned char chr)
     }
     else if(msgN == 2)
     {
+        /*
         if(seen == FALSE)
         {
             if(chr == MESG_BROADCAST_DATA_ID)
                isBroadCast = TRUE;
         }
+        */
         msgN++;
     }
     else if (msgN == (size + 3)) // sync, size, checksum
