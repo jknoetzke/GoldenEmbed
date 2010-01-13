@@ -88,9 +88,6 @@ struct timestamp ts;
 int inMsg = FALSE;
 int msgN = 0;
 int size = 0;
-int seen[2];
-int isBroadCast[2];
-int lastMsgBroadCast = FALSE;
 
 
 // Default Settings
@@ -116,12 +113,8 @@ void Initialize(void);
 void setup_uart0(int newbaud, char want_ints);
 
 void mode_0(void);
-void mode_1(void);
-void mode_2(void);
 void mode_action(void);
 
-void Log_init(void);
-void test(void);
 void statLight(int num, int onoff);
 void AD_conversion(int regbank);
 
@@ -152,7 +145,7 @@ void set_time(void);
 void get_time(void);
 int parseANT(unsigned char chr);
 void add_time_stamp(void);
-
+void must_we_write(void);
 
 void ANTAP1_Config (void)
 {
@@ -307,12 +300,7 @@ void ANTAP1_SetChPeriod (unsigned char chan, unsigned char device)
 {
     unsigned char i;
     unsigned char setup[7];
-    /*
-    unsigned char HR = 0x86;
-    unsigned char PM = 0xf6;
-    
-    unsigned char device = PM;
-    */
+
     setup[0] = 0xa4;
     setup[1] = 0x03;
     setup[2] = 0x43;
@@ -374,11 +362,6 @@ int main (void)
     int i;
     char name[32];
     int count = 0;
-    
-    seen[0] = FALSE;
-    seen[1] = FALSE;
-    isBroadCast[0] = FALSE;
-    isBroadCast[1] = FALSE; //Ya, ya memcpy
 
     enableFIQ();
 
@@ -450,7 +433,7 @@ void set_time(void)
 {
   //Turn on timer 1, 60MHz by default  
   T1TCR=0x01; 
-  CCR=0x13; 
+  CCR=0x13;  //Turn off RTC
   YEAR=0; 
   MONTH=0; 
   DOM=0; 
@@ -459,7 +442,7 @@ void set_time(void)
   HOUR=0; 
   MIN=0; 
   SEC=0; 
-  CCR=0x11;     
+  CCR=0x11;     //Turn RTC back on
 }
 
 
@@ -492,17 +475,18 @@ void feed(void)
 static void UART0ISR(void)
 {
     char temp;
-
+    unsigned char current=U0RBR;
+	
     if(RX_in < 512)
     {
-        RX_array1[RX_in] = U0RBR;
+        RX_array1[RX_in] = current;
         RX_in++;
 
         if(RX_in == 512) log_array1 = 1;
     }
     else if(RX_in >= 512)
     {
-	    RX_array2[RX_in-512] = U0RBR;
+	    RX_array2[RX_in-512] = current;
         RX_in++;
 
         if(RX_in == 1024)
@@ -517,37 +501,12 @@ static void UART0ISR(void)
 	
 	VICVectAddr = 0;
 
-	//Parse the ANT message.
-	if(RX_in < 512)
-	{
-        if(parseANT(RX_array1[RX_in-1]))
-        {
-            get_time(); //It's the end of a MESG, get the time.
-		    add_time_stamp(); //Add the time to the end of the MESG.
-		    /*
-            if(isBroadCast == TRUE && seen == FALSE)
-            {
-               seen = TRUE;
-               ANTAP1_RequestChanID(0x00);
-            }
-            */
-	    }
+    if(parseANT(current))
+    {
+      get_time(); //It's the end of a MESG, get the time.
+      add_time_stamp(); //Add the time to the end of the MESG.
     }
-	else if(RX_in >= 512)
-	{
-        if(parseANT(RX_array2[RX_in-513]))
-        {
-            get_time();
-		    add_time_stamp();
-		    /*
-            if(isBroadCast == TRUE && seen == FALSE)
-            {
-               seen = TRUE;
-               ANTAP1_RequestChanID(0x00);
-            }
-            */
-	    }
-	}
+
 }
 
 void add_time_stamp(void)
@@ -564,8 +523,11 @@ void add_time_stamp(void)
                 RX_array1[RX_in] = ts.hour;
                 RX_in ++;
 
-                if(RX_in == 512) log_array1 = 1;
-				
+                if(RX_in == 512) 
+				{
+				    log_array1 = 1;
+					must_we_write();
+				}
             }
             else if(RX_in >= 512)
             {
@@ -574,8 +536,9 @@ void add_time_stamp(void)
 
                 if(RX_in == 1024)
 				{
-                   log_array2 = 1;
+                    log_array2 = 1;
                     RX_in = 0;
+					must_we_write();
 				}	
 		    }
 		    break;
@@ -585,7 +548,11 @@ void add_time_stamp(void)
                 RX_array1[RX_in] = ts.minute;
                 RX_in ++;
 
-                if(RX_in == 512) log_array1 = 1;
+                if(RX_in == 512) 
+				{
+				    log_array1 = 1;
+					must_we_write();
+			    }
 				
             }
             else if(RX_in >= 512)
@@ -597,6 +564,7 @@ void add_time_stamp(void)
 				{
                     log_array2 = 1;
                     RX_in = 0;
+					must_we_write();
 				}
 				
 		    }
@@ -607,7 +575,11 @@ void add_time_stamp(void)
                 RX_array1[RX_in] = ts.second;
                 RX_in ++;
 
-                if(RX_in == 512) log_array1 = 1;
+                if(RX_in == 512) 
+				{
+				    log_array1 = 1;
+					must_we_write();
+				}
 				
             }
             else if(RX_in >= 512)
@@ -619,6 +591,7 @@ void add_time_stamp(void)
 				{
                     log_array2 = 1;
                     RX_in = 0;
+					must_we_write();
 				}
 		    }
 		    break;
@@ -790,53 +763,61 @@ void mode_0(void) // Auto UART mode
 }
 
 
+void must_we_write(void)
+{
+    int j;
+
+    if(log_array1 == 1)
+    {
+        statLight(0,ON);
+        if(fat16_write_file(handle,(unsigned char *)RX_array1, stringSize) < 0)
+        {
+            while(1)
+            {
+                statLight(0,ON);
+                for(j = 0; j < 500000; j++)
+                    statLight(0,OFF);
+                statLight(1,ON);
+                for(j = 0; j < 500000; j++)
+                    statLight(1,OFF);
+            }
+        }
+    
+        sd_raw_sync();
+        statLight(0,OFF);
+        log_array1 = 0;
+    }
+    
+    if(log_array2 == 1)
+    {
+        statLight(1,ON);
+                
+        if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
+        {
+            while(1)
+            {
+                statLight(0,ON);
+                for(j = 0; j < 500000; j++)
+                    statLight(0,OFF);
+                statLight(1,ON);
+                for(j = 0; j < 500000; j++)
+                    statLight(1,OFF);
+            }
+        }
+    
+        sd_raw_sync();
+        statLight(1,OFF);
+        log_array2 = 0;
+    }
+}
+
+
 void mode_action(void)
 {
     int j;
     while(1)
     {
-        if(log_array1 == 1)
-        {
-            statLight(0,ON);
-            if(fat16_write_file(handle,(unsigned char *)RX_array1, stringSize) < 0)
-            {
-                while(1)
-                {
-                    statLight(0,ON);
-                    for(j = 0; j < 500000; j++)
-                            statLight(0,OFF);
-                    statLight(1,ON);
-                    for(j = 0; j < 500000; j++)
-                            statLight(1,OFF);
-                }
-            }
-    
-            sd_raw_sync();
-            statLight(0,OFF);
-            log_array1 = 0;
-        }
-    
-        if(log_array2 == 1)
-        {
-            statLight(1,ON);
-                
-            if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
-            {
-                while(1)
-                {
-                    statLight(0,ON);
-                    for(j = 0; j < 500000; j++)
-                         statLight(0,OFF);
-                    statLight(1,ON);
-                    for(j = 0; j < 500000; j++)
-                        statLight(1,OFF);
-                }
-             }
-    
-             sd_raw_sync();
-             statLight(1,OFF);
-             log_array2 = 0;
-         }
+	    must_we_write(); //Check to see if the buffer if ready to be written
     
         if((IOPIN0 & 0x00000008) == 0) // if button pushed, log file & quit
         {
