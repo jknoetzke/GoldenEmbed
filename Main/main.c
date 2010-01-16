@@ -89,6 +89,9 @@ int inMsg = FALSE;
 int msgN = 0;
 int size = 0;
 
+int seen[4];
+int isBroadCast = FALSE;
+int currentChannel=-1;
 
 // Default Settings
 static int baud = 9600;
@@ -362,6 +365,11 @@ int main (void)
     int i;
     char name[32];
     int count = 0;
+    
+    seen[0] = FALSE;
+    seen[1] = FALSE;
+    seen[2] = FALSE;
+    seen[3] = FALSE;
 
     enableFIQ();
 
@@ -501,12 +509,16 @@ static void UART0ISR(void)
 	
 	VICVectAddr = 0;
 
-    if(parseANT(current))
+  if(parseANT(current))
     {
       get_time(); //It's the end of a MESG, get the time.
       add_time_stamp(); //Add the time to the end of the MESG.
+      if(isBroadCast == TRUE && currentChannel>=0 && seen[currentChannel] == FALSE)
+        {
+          seen[currentChannel] = TRUE;
+          ANTAP1_RequestChanID(currentChannel);
+        }
     }
-
 }
 
 void add_time_stamp(void)
@@ -918,7 +930,8 @@ int parseANT(unsigned char chr)
     {
         msgN = 0; // Always reset msg count if we get a sync
         inMsg = TRUE;
-        msgN++;                         
+        currentChannel=-1;
+        msgN++;      
     }
     else if (msgN == 1)
     {
@@ -927,14 +940,16 @@ int parseANT(unsigned char chr)
     }
     else if(msgN == 2)
     {
-        /*
-        if(seen == FALSE)
-        {
-            if(chr == MESG_BROADCAST_DATA_ID)
-               isBroadCast = TRUE;
-        }
-        */
-        msgN++;
+      if(chr == MESG_BROADCAST_DATA_ID) {
+        isBroadCast = TRUE;
+      } else {
+        isBroadCast = FALSE;
+      }
+      msgN++;
+    }
+    else if (msgN == 3) {
+      currentChannel=(int) chr; // this has to be 0x00,0x01,0x02,0x03 so okay?
+      msgN++;
     }
     else if (msgN == (size + 3)) // sync, size, checksum
     {                           
