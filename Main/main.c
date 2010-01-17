@@ -365,7 +365,7 @@ int main (void)
     int i;
     char name[32];
     int count = 0;
-    
+
     seen[0] = FALSE;
     seen[1] = FALSE;
     seen[2] = FALSE;
@@ -931,7 +931,7 @@ int parseANT(unsigned char chr)
         msgN = 0; // Always reset msg count if we get a sync
         inMsg = TRUE;
         currentChannel=-1;
-        msgN++;      
+        msgN++;
     }
     else if (msgN == 1)
     {
