@@ -417,7 +417,7 @@ int main (void)
   
     sd_raw_sync();  
 	
-    //set_time();
+    set_time();
 
     mode_0();
 
@@ -494,7 +494,7 @@ static void UART0ISR(void)
     }
     else if(RX_in >= 512)
     {
-	    RX_array2[RX_in-512] = current;
+        RX_array2[RX_in-512] = current;
         RX_in++;
 
         if(RX_in == 1024)
@@ -505,18 +505,18 @@ static void UART0ISR(void)
     }
 
 	
-	temp = U0IIR; // Have to read this to clear the interrupt 
+    temp = U0IIR; // Have to read this to clear the interrupt 
 	
-	VICVectAddr = 0;
+    VICVectAddr = 0;
 
-  if(parseANT(current))
+    if(parseANT(current))
     {
-      get_time(); //It's the end of a MESG, get the time.
-      add_time_stamp(); //Add the time to the end of the MESG.
-      if(isBroadCast == TRUE && currentChannel>=0 && seen[currentChannel] == FALSE)
+        get_time(); //It's the end of a MESG, get the time.
+        add_time_stamp(); //Add the time to the end of the MESG.
+        if(isBroadCast == TRUE && currentChannel>=0 && seen[currentChannel] == FALSE)
         {
-          seen[currentChannel] = TRUE;
-          ANTAP1_RequestChanID(currentChannel);
+            seen[currentChannel] = TRUE;
+            ANTAP1_RequestChanID(currentChannel);
         }
     }
 }
@@ -529,17 +529,17 @@ void add_time_stamp(void)
 	{
 	    switch(i)
 	    {
-		    case 0:
+            case 0:
             if(RX_in < 512)
             {
                 RX_array1[RX_in] = ts.hour;
                 RX_in ++;
 
                 if(RX_in == 512) 
-				{
-				    log_array1 = 1;
-					must_we_write();
-				}
+                {
+                    log_array1 = 1;
+                    must_we_write();
+                }
             }
             else if(RX_in >= 512)
             {
@@ -547,25 +547,25 @@ void add_time_stamp(void)
                 RX_in ++;
 
                 if(RX_in == 1024)
-				{
+		{
                     log_array2 = 1;
                     RX_in = 0;
-					must_we_write();
-				}	
-		    }
-		    break;
-			case 1:
+		    must_we_write();
+                }	
+            }
+            break;
+            case 1:
             if(RX_in < 512)
             {
                 RX_array1[RX_in] = ts.minute;
                 RX_in ++;
 
                 if(RX_in == 512) 
-				{
-				    log_array1 = 1;
-					must_we_write();
-			    }
-				
+                {
+                    log_array1 = 1;
+                    must_we_write();
+                }
+
             }
             else if(RX_in >= 512)
             {
@@ -573,26 +573,26 @@ void add_time_stamp(void)
                 RX_in ++;
 
                 if(RX_in == 1024)
-				{
+                {
                     log_array2 = 1;
                     RX_in = 0;
-					must_we_write();
-				}
-				
-		    }
-			break;
-	    	case 2:
+                    must_we_write();
+                }
+
+            }
+            break;
+            case 2:
             if(RX_in < 512)
             {
                 RX_array1[RX_in] = ts.second;
                 RX_in ++;
 
                 if(RX_in == 512) 
-				{
-				    log_array1 = 1;
-					must_we_write();
-				}
-				
+                {
+                    log_array1 = 1;
+                    must_we_write();
+                }
+
             }
             else if(RX_in >= 512)
             {
@@ -600,15 +600,15 @@ void add_time_stamp(void)
                 RX_in ++;
 
                 if(RX_in == 1024)
-				{
+                {
                     log_array2 = 1;
                     RX_in = 0;
-					must_we_write();
-				}
-		    }
-		    break;
+                    must_we_write();
+                }
+            }
+            break;
 	    }
-	}
+      }
 }
 
 
@@ -829,7 +829,7 @@ void mode_action(void)
     int j;
     while(1)
     {
-	    must_we_write(); //Check to see if the buffer if ready to be written
+        must_we_write(); //Check to see if the buffer if ready to be written
     
         if((IOPIN0 & 0x00000008) == 0) // if button pushed, log file & quit
         {
