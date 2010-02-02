@@ -60,14 +60,26 @@
 #define ON      1
 #define OFF     0
 
-//#define chanNum   0x00        // ChanNum
 #define chanType  0x00 // ChanType
 #define netNum    0x00    // NetNum
-//#define devNum 0x00
 #define rate  0x1f86 //HRM
 #define MESG_NETWORK_KEY_ID	 0x46
 #define MESG_TX_SYNC 0xa4
 #define MESG_BROADCAST_DATA_ID 0x4E
+
+#define DEVTYPE_HRM	0x78	/* ANT+ HRM */
+#define DEVTYPE_BIKE	0x79	/* ANT+ Bike speed and cadence */
+//#define DEVTYPE_FOOT	0x7c	/* ANT+ Foot pod */
+#define DEVTYPE_PWR	0x0b	/* ANT+ Power meter */
+
+#define DEVPERIOD_HRM	0x86	/* ANT+ HRM */
+#define DEVPERIOD_BIKE	0x96	/* ANT+ Bike speed and cadence */
+//#define DEVPERIOD_FOOT	0xc6	/* ANT+ Foot pod */
+#define DEVPERIOD_PWR	0xf6	/* ANT+ Power meter */
+
+
+
+
 
 #define FALSE 0
 #define TRUE 1
@@ -158,7 +170,7 @@ void ANTAP1_Config (void)
     //HR
     ANTAP1_AssignCh(0x00);
     delay_ms(50);
-    ANTAP1_SetChId(0x00,0x78); //0x78 == HR type
+    ANTAP1_SetChId(0x00,DEVTYPE_HRM);
     delay_ms(50);
     ANTAP1_AssignNetwork(0x00);
     delay_ms(50);
@@ -166,7 +178,7 @@ void ANTAP1_Config (void)
     delay_ms(50);
     ANTAP1_SetChRFFreq(0x00);
     delay_ms(50);
-    ANTAP1_SetChPeriod(0x00, 0x86);
+    ANTAP1_SetChPeriod(0x00, DEVPERIOD_HRM);
     delay_ms(50);
     ANTAP1_OpenCh(0x00);
     delay_ms(50);
@@ -174,7 +186,7 @@ void ANTAP1_Config (void)
     //Power
     ANTAP1_AssignCh(0x01);
     delay_ms(50);
-    ANTAP1_SetChId(0x01,0x0B); // 0x0B == Power Type
+    ANTAP1_SetChId(0x01,DEVTYPE_PWR); 
     delay_ms(50);
     ANTAP1_AssignNetwork(0x01);
     delay_ms(50);
@@ -182,9 +194,25 @@ void ANTAP1_Config (void)
     delay_ms(50);
     ANTAP1_SetChRFFreq(0x01);
     delay_ms(50);
-    ANTAP1_SetChPeriod(0x01, 0xf6);
+    ANTAP1_SetChPeriod(0x01, DEVPERIOD_PWR);
     delay_ms(50);
     ANTAP1_OpenCh(0x01);
+    delay_ms(50);
+
+    //Speed Cadence
+    ANTAP1_AssignCh(0x02);
+    delay_ms(50);
+    ANTAP1_SetChId(0x02,DEVTYPE_BIKE);
+    delay_ms(50);
+    ANTAP1_AssignNetwork(0x02);
+    delay_ms(50);
+    ANTAP1_SetSearchTimeout(0x02);
+    delay_ms(50);
+    ANTAP1_SetChRFFreq(0x02);
+    delay_ms(50);
+    ANTAP1_SetChPeriod(0x02, DEVPERIOD_BIKE);
+    delay_ms(50);
+    ANTAP1_OpenCh(0x02);
     delay_ms(50);
 }
 
@@ -476,15 +504,15 @@ void Initialize(void)
 
 void feed(void)
 {
-        PLLFEED=0xAA;
-        PLLFEED=0x55;
+    PLLFEED=0xAA;
+    PLLFEED=0x55;
 }
 
 static void UART0ISR(void)
 {
     char temp;
     unsigned char current=U0RBR;
-	
+
     if(RX_in < 512)
     {
         RX_array1[RX_in] = current;
@@ -504,9 +532,9 @@ static void UART0ISR(void)
         }
     }
 
-	
-    temp = U0IIR; // Have to read this to clear the interrupt 
-	
+
+    temp = U0IIR; // Have to read this to clear the interrupt
+
     VICVectAddr = 0;
 
     if(parseANT(current))
@@ -527,8 +555,8 @@ void add_time_stamp(void)
    //The ugliest code you ever did see..
     for(int i=0; i < 3; i++)
 	{
-	    switch(i)
-	    {
+            switch(i)
+            {
             case 0:
             if(RX_in < 512)
             {
@@ -547,11 +575,11 @@ void add_time_stamp(void)
                 RX_in ++;
 
                 if(RX_in == 1024)
-		{
+                {
                     log_array2 = 1;
                     RX_in = 0;
-		    must_we_write();
-                }	
+                    must_we_write();
+                }
             }
             break;
             case 1:
@@ -607,7 +635,7 @@ void add_time_stamp(void)
                 }
             }
             break;
-	    }
+         }
       }
 }
 
