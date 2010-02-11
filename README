@@ -1,0 +1,20 @@
+
+    http://chomsky.shampoo.ca/goldenembed
+
+   This is the firmware for the Golden Embed project. Please note that all the code here is under the GPL.
+
+   This firmware runs off Sparkfun's Logomatic: http://www.sparkfun.com/commerce/product_info.php?products_id=8627 and requires the nRF2401A  http://www.sparkfun.com/commerce/product_info.php?products_id=153 
+
+   You will also need a LiPo battery, a Mini B 5 pin USB cable and an SD card.
+
+   To get an idea on how to solder the pieces together, see the following: http://www.flickr.com/photos/42018184@N00/sets/72157623403983166/
+
+   To build this firmware you must install either WinARM: http://www.siwawi.arubi.uni-kl.de/avr_projects/arm_projects/ or GnuARM: http://www.gnuarm.com/ for Linux and OS X.
+
+   Once you have the firmware built, simply copy the the FW.SFE to a FAT16 formatted (important) SD card loaded in your Logomatic. Then simply pull out the USB cable. This will force the boot loader to load up the firmware.
+
+   The stat lights will blink to indicate that the firmware has started. Then, after a few seconds you should see each stat light blink indicating that it is writing to disk. You obviously need an ANT+ device to be in range.
+
+   The result will be ANT+ messages plus a time stamp tailed to the end of each ANT+ message. To parse this message you may write your own parser or use the Java parser found here: http://github.com/jknotzke/GoldenEmbedParser
+
+   If you have questions, patches there is a mailing list: http://groups.google.com/group/goldenembed
