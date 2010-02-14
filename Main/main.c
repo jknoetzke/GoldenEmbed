@@ -110,6 +110,10 @@ static int baud = 9600;
 static char trig = '$';
 static short frame = 100;
 
+//JFK ID's
+unsigned char HRM[2] = { 0x89, 0x43 };
+unsigned char CINQO[2] = { 0x55, 0x05};
+
 //Timestamp
 struct timestamp
 {
@@ -149,7 +153,7 @@ void flashBoobies(int num_of_times);
 void ANTAP1_Config(void);
 void ANTAP1_Reset(void);
 void ANTAP1_AssignCh(unsigned char);
-void ANTAP1_SetChId(unsigned char, unsigned char deviceType);
+void ANTAP1_SetChId(unsigned char, unsigned char deviceType, unsigned char deviceNum[]);
 void ANTAP1_SetChRFFreq(unsigned char);
 void ANTAP1_SetChPeriod(unsigned char, unsigned char);
 void ANTAP1_OpenCh(unsigned char);
@@ -170,7 +174,7 @@ void ANTAP1_Config (void)
     //HR
     ANTAP1_AssignCh(0x00);
     delay_ms(50);
-    ANTAP1_SetChId(0x00,DEVTYPE_HRM);
+    ANTAP1_SetChId(0x00,DEVTYPE_HRM, HRM);
     delay_ms(50);
     ANTAP1_AssignNetwork(0x00);
     delay_ms(50);
@@ -186,7 +190,7 @@ void ANTAP1_Config (void)
     //Power
     ANTAP1_AssignCh(0x01);
     delay_ms(50);
-    ANTAP1_SetChId(0x01,DEVTYPE_PWR); 
+    ANTAP1_SetChId(0x01,DEVTYPE_PWR, CINQO); 
     delay_ms(50);
     ANTAP1_AssignNetwork(0x01);
     delay_ms(50);
@@ -197,22 +201,6 @@ void ANTAP1_Config (void)
     ANTAP1_SetChPeriod(0x01, DEVPERIOD_PWR);
     delay_ms(50);
     ANTAP1_OpenCh(0x01);
-    delay_ms(50);
-
-    //Speed Cadence
-    ANTAP1_AssignCh(0x02);
-    delay_ms(50);
-    ANTAP1_SetChId(0x02,DEVTYPE_BIKE);
-    delay_ms(50);
-    ANTAP1_AssignNetwork(0x02);
-    delay_ms(50);
-    ANTAP1_SetSearchTimeout(0x02);
-    delay_ms(50);
-    ANTAP1_SetChRFFreq(0x02);
-    delay_ms(50);
-    ANTAP1_SetChPeriod(0x02, DEVPERIOD_BIKE);
-    delay_ms(50);
-    ANTAP1_OpenCh(0x02);
     delay_ms(50);
 }
 
@@ -346,7 +334,7 @@ void ANTAP1_SetChPeriod (unsigned char chan, unsigned char device)
 }
 
 // Assigns Device#=0000 (wildcard), Device Type ID=00 (wildcard), Trans Type=00 (wildcard)
-void ANTAP1_SetChId (unsigned char chan, unsigned char deviceType) 
+void ANTAP1_SetChId (unsigned char chan, unsigned char deviceType, unsigned char deviceNum[]) 
 {
     unsigned char i;
     unsigned char setup[9];
@@ -355,11 +343,11 @@ void ANTAP1_SetChId (unsigned char chan, unsigned char deviceType)
     setup[1] = 0x05;
     setup[2] = 0x51;
     setup[3] = chan;
-    setup[4] = 0x00;
-    setup[5] = 0x00;
+    setup[4] = deviceNum[0];
+    setup[5] = deviceNum[1];
     setup[6] = deviceType;
     setup[7] = 0x00;
-    setup[8] = (0xa4^0x05^0x51^chan^0x00^0x00^deviceType^0x00);
+    setup[8] = (0xa4^0x05^0x51^chan^deviceNum[0]^deviceNum[1]^deviceType^0x00);
     
     for(i = 0 ; i < 9 ; i++)
        putc_serial0(setup[i]);
