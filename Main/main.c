@@ -529,11 +529,11 @@ static void UART0ISR(void)
     {
         get_time(); //It's the end of a MESG, get the time.
         add_time_stamp(); //Add the time to the end of the MESG.
-        if(isBroadCast == TRUE && currentChannel>=0 && seen[currentChannel] == FALSE)
-        {
-            seen[currentChannel] = TRUE;
-            ANTAP1_RequestChanID(currentChannel);
-        }
+        //if(isBroadCast == TRUE && currentChannel>=0 && seen[currentChannel] == FALSE)
+        //{
+        //    seen[currentChannel] = TRUE;
+        //    ANTAP1_RequestChanID(currentChannel);
+        //}
     }
 }
 
