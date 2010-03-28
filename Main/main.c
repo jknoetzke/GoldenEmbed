@@ -529,11 +529,6 @@ static void UART0ISR(void)
     {
         get_time(); //It's the end of a MESG, get the time.
         add_time_stamp(); //Add the time to the end of the MESG.
-        //if(isBroadCast == TRUE && currentChannel>=0 && seen[currentChannel] == FALSE)
-        //{
-        //    seen[currentChannel] = TRUE;
-        //    ANTAP1_RequestChanID(currentChannel);
-        //}
     }
 }
 
@@ -787,6 +782,7 @@ void mode_0(void) // Auto UART mode
     setup_uart0(baud,1);
     stringSize = 512;
     ANTAP1_Config();
+    IOSET0 |= 0x80000000; //Turn off USB LED to save power. 
     mode_action();
 }
 
