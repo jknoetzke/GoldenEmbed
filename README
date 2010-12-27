@@ -1,0 +1,22 @@
+This code is based off the SparkFun logomatic: 
+http://www.sparkfun.com/products/8627
+
+Instructions on how to build are at the Sparkfun link.
+
+Instructions on the actual project of GoldenEmbed are here: 
+http://chomsky.shampoo.ca/goldenembed
+
+GoldenEmbed is a ANT+ logger. It simply initializes ANT+ channels (HR, Power, 
+Speed by default) and logs that data directly to the SD card with a timstamp
+that is obtained from the RTC of the logomatic.
+
+In order to parse this data afterwards, a Java application was written called
+GoldenEmbedParser https://github.com/jknotzke/GoldenEmbedParser.
+
+This parser will create a .gc file which is a file that is readable by the
+Golden Cheetah Project: http://www.goldencheetah.org
+
+We also have a mailing list here: 
+
+https://groups.google.com/forum/?hl=en&pli=1#!forum/goldenembed
+
