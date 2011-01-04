@@ -111,8 +111,7 @@ static char trig = '$';
 static short frame = 100;
 
 //JFK ID's
-unsigned char HRM[2] = { 0x89, 0x43 };
-//unsigned char CINQO[2] = { 0x55, 0x05};
+unsigned char HRM[2] = { 0x79, 0x94 };
 unsigned char CINQO[2] = { 0xf1, 0x2d};
 
 //Timestamp
