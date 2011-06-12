@@ -66,6 +66,8 @@
 #define MESG_NETWORK_KEY_ID	 0x46
 #define MESG_TX_SYNC 0xa4
 #define MESG_BROADCAST_DATA_ID 0x4E
+#define MESG_RESPONSE_EVENT_ID 0x40
+
 
 #define DEVTYPE_HRM	0x78	/* ANT+ HRM */
 #define DEVTYPE_BIKE	0x79	/* ANT+ Bike speed and cadence */
@@ -99,6 +101,10 @@ int size = 0;
 int seen[4];
 int isBroadCast = FALSE;
 int currentChannel=-1;
+
+char msgResponseEvent = FALSE;
+char msgCheckHandler = FALSE;
+
 
 // Default Settings
 static int baud = 9600;
@@ -161,6 +167,10 @@ int parseANT(unsigned char chr);
 void add_time_stamp(void);
 void must_we_write(void);
 
+
+/* 
+ * ANT CALLS
+ */
 void ANTAP1_Config (void)
 {
   ANTAP1_Reset();
@@ -244,13 +254,13 @@ void ANTAP1_AssignNetwork(unsigned char chan)
   setup[2] = MESG_NETWORK_KEY_ID;
   setup[3] = chan; //chan 
   setup[4] = 0xb9;
-  setup[5] = 0xa5;     
-  setup[6] = 0x21;    
-  setup[7] = 0xfb; 
-  setup[8] = 0xbd; 
-  setup[9] = 0x72; 
+  setup[5] = 0xa5;
+  setup[6] = 0x21;
+  setup[7] = 0xfb;
+  setup[8] = 0xbd;
+  setup[9] = 0x72;
   setup[10] = 0xc3; 
-  setup[11] = 0x45; 
+  setup[11] = 0x45;
   setup[12] = (0xa4^0x09^MESG_NETWORK_KEY_ID^chan^0xb9^0xa5^0x21^0xfb^0xbd^0x72^0xc3^0x45);
 
   for(i = 0 ; i < 13 ; i++)
@@ -948,6 +958,9 @@ int parseANT(unsigned char chr)
     } else {
       isBroadCast = FALSE;
     }
+    if(chr == MESG_RESPONSE_EVENT_ID) {
+        msgResponseEvent = TRUE;
+    }
     msgN++;
   }
   else if (msgN == 3) {
@@ -960,6 +973,21 @@ int parseANT(unsigned char chr)
     inMsg = FALSE;
     msgN = 0;
     return 1; //We are at the end of the message
+  }
+  else if(msgN == 4 && msgResponseEvent == TRUE)
+  {
+    msgCheckHandler = TRUE;
+    msgN++; 
+  }
+  else if(msgN == 5 && msgCheckHandler == TRUE)
+  {
+    if(chr == 0x01) //Dropped Channel
+    {
+      flashBoobies(3);  //HR
+    }
+    msgCheckHandler = FALSE;
+    msgResponseEvent = FALSE;
+    msgN++;
   }
   else if(inMsg == TRUE)
   {
