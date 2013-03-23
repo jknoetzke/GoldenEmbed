@@ -44,7 +44,7 @@
 #define AUTOANT_MAX_LINE_LEN 240
 
 static int autoant_delay;
- 
+
 typedef struct {
     int position; // bytes into file
     int linenumber;
@@ -61,11 +61,11 @@ static void autoant_init_parser(void) {
     stack_depth=0;
     autoant_stack[stack_depth].position=0;
     autoant_stack[stack_depth].linenumber=0;
-    autoant_stack[stack_depth].iterations_left=0;  
+    autoant_stack[stack_depth].iterations_left=0;
 }
 
 char *autoant_interpret_warning(int warnno) {
-   
+
     switch (warnno) {
     case AUTOANT_WARN_SIZE_EXCEEDED:
         return "Buffer size exceeded";
@@ -88,11 +88,11 @@ char *autoant_interpret_warning(int warnno) {
         if (op->warn) op->warn(warnno,                                \
                                autoant_stack[stack_depth].linenumber, \
                                autoant_stack[stack_depth].position);  \
-    } while (0);					
-    
+    } while (0);
+
 #define OUTPUT(msg) do {			\
         if (op->write) op->write(msg);		\
-    } while (0);					
+    } while (0);
 
 #define LINE_STARTSWITH(val) 0==memcmp(line,val,strlen(val))
 
@@ -107,10 +107,10 @@ static int get_pos_integer(char *line) {
     int found_num=0;
 
     char *c=line;
-  
+
     while ((*c) && isspace(*c))
         c++;
-  
+
     while (1) {
         switch (*c) {
         case '0'...'9':
@@ -147,7 +147,7 @@ static uint8_t *get_hex_char_array(char *line) {
 
         current=0;
         while (*c != ']') {
-            //printf("char '%c' current %02x\n",*c,current); 
+            //printf("char '%c' current %02x\n",*c,current);
             switch (*c) {
             case 0:
                 goto done;
@@ -176,14 +176,14 @@ static uint8_t *get_hex_char_array(char *line) {
         char_array_readout[len++]=current; checksum ^= current;
 
         if (len+1==MAX_BUFFER_LEN) {
-            WARN(AUTOANT_WARN_SIZE_EXCEEDED);                
+            WARN(AUTOANT_WARN_SIZE_EXCEEDED);
             return NULL;
         }
     }
 
  done:
     if (len==0) {
-        return NULL;    
+        return NULL;
     } else {
         char_array_readout[1]=(len-3); checksum ^= (len-3);
         char_array_readout[len++]=checksum;
@@ -191,27 +191,27 @@ static uint8_t *get_hex_char_array(char *line) {
     }
 }
 
-// returns -1 for end processing, 0 for continue. 
+// returns -1 for end processing, 0 for continue.
 
 static int autoant_run_line(char *line, int len) {
- 
+
     //printf("Processing: %s\n", line);
- 
+
     /* skip whitespace */
     char *end_char=line+len; // actually, one past last character
-  
+
     while (line < end_char) {
         if (isspace(*line)) {
             line++;
         } else {
             break;
-        }    
+        }
     }
-  
+
     /* remove comments off the end */
     char *x=line;
     while (x<end_char) {
-        if (*x=='#') 
+        if (*x=='#')
             end_char=x;
         x++;
     }
@@ -222,17 +222,17 @@ static int autoant_run_line(char *line, int len) {
     //autoant_stack[stack_depth].linenumber,
     //	 autoant_stack[stack_depth].iterations_left, line);
 
-    if (line==end_char) 
+    if (line==end_char)
         return 0; // blank line, skip
-      
+
     if (LINE_STARTSWITH("o")) {
         OUTPUT(line+1);
     } else if (LINE_STARTSWITH("d")) {
         int d=get_pos_integer(line+1);
 
         uint16_t timeout = op->get_milliseconds()+d;
-    
-        int16_t timeremain; 
+
+        int16_t timeremain;
 
         while ((timeremain = timeout - op->get_milliseconds())>0) {
             if (op->delay_ms) op->delay_ms();
@@ -246,7 +246,7 @@ static int autoant_run_line(char *line, int len) {
         line++;
         int hard_fail=(*line =='!');
         if (hard_fail) line++;
-    
+
         int d=get_pos_integer(line);
         if (d<0) d=autoant_delay;
 
@@ -260,8 +260,8 @@ static int autoant_run_line(char *line, int len) {
         uint8_t *c2;
 
         uint16_t timeout = op->get_milliseconds()+d;
-    
-        int16_t timeremain; 
+
+        int16_t timeremain;
 
         while ((timeremain = timeout - op->get_milliseconds())>0) {
             c2=op->receive_ant_message(timeremain);
@@ -290,7 +290,7 @@ static int autoant_run_line(char *line, int len) {
             autoant_stack[stack_depth-1].linenumber=autoant_stack[stack_depth].linenumber;
             stack_depth-=1;
         }
-     
+
     } else if (LINE_STARTSWITH("loop")) {
         while (*line)
             if (*line++=='(') break;
@@ -334,7 +334,7 @@ static int autoant_read_line(void) {
         autoant_stack[stack_depth].position++;
 
         if (c<0) break;
-    
+
         if (len<AUTOANT_MAX_LINE_LEN) {
             linebuf[len++]=c;
         }
@@ -344,9 +344,9 @@ static int autoant_read_line(void) {
     autoant_stack[stack_depth].linenumber++;
 
     if (len == AUTOANT_MAX_LINE_LEN) { WARN(AUTOANT_WARN_TRUNCATED_LINE); len--; }
-    
+
     linebuf[len]='\0'; // overwrite \n with \0 for c-friendly null terminator
-  
+
     int ret=autoant_run_line(linebuf, len);
 
     if ((c >= 0) && (ret==0)) ret=1;
@@ -358,7 +358,7 @@ int autoant_exec(autoant_ops_t *ops) {
     op->seek(0);
     int ret;
     autoant_init_parser();
-  
+
     do {
         ret=autoant_read_line();
     } while (ret == 1);
