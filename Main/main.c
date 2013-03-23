@@ -53,6 +53,8 @@
 
 #include "serial.h"
 
+#include "autoant.h"
+
 /*******************************************************
  *                   Global Variables
  ******************************************************/
@@ -77,10 +79,6 @@
 //#define DEVPERIOD_FOOT	0xc6	/* ANT+ Foot pod */
 #define DEVPERIOD_PWR	0xf6	/* ANT+ Power meter */
 
-
-
-
-
 #define FALSE 0
 #define TRUE 1
 
@@ -94,6 +92,8 @@ char get_frame = 0;
 
 signed int stringSize;
 struct fat16_file_struct * handle; //Actual Log File.
+struct fat16_file_struct * out_handle; 
+
 char stringBuf[256];
 struct timestamp ts;
 
@@ -106,7 +106,7 @@ int isBroadCast = FALSE;
 int currentChannel=-1;
 
 // Default Settings
-static int baud = 9600;
+static int baud = 115200; //38400; //9600;
 static char trig = '$';
 static short frame = 100;
 
@@ -144,7 +144,7 @@ void UNDEF_Routine(void) __attribute__ ((interrupt("UNDEF")));
 void fat_initialize(void);
 
 void delay_ms(int count);
-void flashBoobies(int num_of_times);
+
 
 void ANTAP1_Config(void);
 void ANTAP1_Reset(void);
@@ -382,7 +382,140 @@ void ANTAP1_OpenCh (unsigned char chan)
 
 }
 
+int16_t read_byte(void) { 
+    uint8_t buf;
+    int c=fat16_read_file(handle, &buf, 1);
+    if (c==0) 
+        return -1;
+    return (int16_t)buf; 
+}
 
+void seek(int offset) {
+    fat16_seek_file(handle, offset, FAT16_SEEK_SET);
+}
+
+uint16_t get_milliseconds(void) {
+    uint32_t t;
+    do {
+        t = CTC & 0x7ffe;
+    } while (t != (CTC & 0x7ffe));
+    
+    t >>=1; // this gives 32768 Hz
+    t >>=5; // divide by 32 for 1024 Hz
+    
+    return t & 0xffff;
+}
+
+void write_ant(char *ant) {
+    int i;
+    int l=autoant_antlen(ant);
+    
+    for(i = 0 ; i < l ; i++)
+       putc_serial0(ant[i]);
+
+    putc_serial0(0);
+    putc_serial0(0);
+}
+
+#define ANT_MAX_LENGTH (30)
+#define ANT_BUF_LEN 32
+uint8_t ant_rx_buf[ANT_BUF_LEN];
+#define ANT_SYNC_BYTE (0xa4)
+
+uint8_t *receive_ant(int16_t timeout) {
+  enum States {ST_WAIT_FOR_SYNC, ST_GET_LENGTH, ST_GET_MESSAGE_ID, ST_GET_DATA, ST_VALIDATE_PACKET};
+  static enum States state = ST_WAIT_FOR_SYNC;
+
+  uint16_t t0 = get_milliseconds();
+  static int length;
+  static uint8_t checksum;
+  static int chars_in_buf=0;
+  
+  while (1) {
+    int16_t time_remaining = t0 + timeout - get_milliseconds(); 
+    if (time_remaining < 0) return NULL;
+    
+    if (!(U0LSR & 0x1)) continue;
+    uint8_t c=U0RBR;
+
+    switch (state) {
+    case ST_WAIT_FOR_SYNC:
+      if (c == ANT_SYNC_BYTE) {
+	state = ST_GET_LENGTH;
+	ant_rx_buf[chars_in_buf++] = c;
+	checksum = ANT_SYNC_BYTE;
+
+      }
+      break;
+      
+    case ST_GET_LENGTH:
+      if ((c == 0) || (c > ANT_MAX_LENGTH)) {
+	chars_in_buf=0;
+	state = ST_WAIT_FOR_SYNC;
+      }
+      else {
+	ant_rx_buf[chars_in_buf++] = c;
+	checksum ^= c;
+	length = chars_in_buf+c+1;
+	state = ST_GET_MESSAGE_ID;
+      }
+      break;
+      
+    case ST_GET_MESSAGE_ID:
+      ant_rx_buf[chars_in_buf++] = c;
+      checksum ^= c;
+      state = ST_GET_DATA;
+      break;
+	
+    case ST_GET_DATA:
+      ant_rx_buf[chars_in_buf++] = c;
+      checksum ^= c;
+      if (chars_in_buf >= length){
+	state = ST_VALIDATE_PACKET;
+      }
+      break;
+      
+    case ST_VALIDATE_PACKET:
+      ant_rx_buf[chars_in_buf++] = c;
+
+      if (checksum == c){	
+	chars_in_buf=0; // ready for next time
+	state = ST_WAIT_FOR_SYNC;
+	return ant_rx_buf;	
+      }
+      // chksum fail. start looking for message again
+      chars_in_buf=0;
+      state = ST_WAIT_FOR_SYNC;
+      break;
+    }  
+  }
+}
+
+void write_out(const uint8_t *c) {
+    fat16_write_file(out_handle,c,strlen(c));
+}
+
+void warn_message(int warnno, int linenumber, int pos) {
+    char output_string[100];
+
+    string_printf(output_string,
+                  "At line %d byte %d : #%d (%s)\n",
+                  linenumber, pos, warnno,
+                  autoant_interpret_warning(warnno));
+    output_string[99]=0;
+    
+    write_out(output_string);
+}
+
+autoant_ops_t ops={
+    .receive_ant_message=receive_ant,
+    .send_ant_message=write_ant,
+    .get_char=read_byte,
+    .seek=seek,
+    .write=write_out,
+    .warn=warn_message,
+    .get_milliseconds=get_milliseconds
+};
 
 /*******************************************************
  *                      MAIN
@@ -407,7 +540,7 @@ int main (void)
 
     set_time();
     
-    setup_uart0(4800, 0);
+    setup_uart0(baud, 0);
 
     // Flash Status Lights
     for(i = 0; i < 5; i++)
@@ -419,15 +552,23 @@ int main (void)
         delay_ms(50);
         statLight(1,OFF);
     }
-
+    
+    out_handle = root_open("out.txt");
+    fat16_seek_file(out_handle,0,FAT16_SEEK_END);
+    fat16_write_file(out_handle,"startup\n",strlen("startup\n"));
+    
+    handle = root_open("init.ant");
+    if (handle) {
+      autoant_exec(&ops);
+      fat16_close_file(handle);
+    }
     count++;
     string_printf(name,"ANT%02d.gce",count);
     while(root_file_exists(name))
     {
         count++;
         if(count == 250) 
-        {
-            while(1)
+        {            while(1)
             {
                 statLight(0,ON);
                 statLight(1,ON);
@@ -452,6 +593,9 @@ int main (void)
     return 0;
 }
 
+
+
+
 //Set the time
 void get_time(void)
 {
@@ -468,10 +612,11 @@ void get_time(void)
 void set_time(void)
 {
   //Turn on timer 1, 60MHz by default  
-  T1TCR=0x01; 
+    T1TCR=0x01; // enable timer1
+    
   CCR=0x13;  //Turn off RTC
   YEAR=0; 
-  MONTH=0; 
+  MONTH=0;   
   DOM=0; 
   DOW=0; 
   DOY=0; 
@@ -927,20 +1072,6 @@ void fat_initialize(void)
     
     openroot();
         
-}
-
-void flashBoobies(int num_of_times)
-{
-    // Flash Status Lights
-    for(int i = 0; i < num_of_times; i++)
-    {
-        statLight(0,ON);
-        statLight(1,ON);
-        delay_ms(100);
-        statLight(0,OFF);
-        statLight(1,OFF);
-        delay_ms(100); 
-    }
 }
 
 void delay_ms(int count)
