@@ -144,8 +144,7 @@ void UNDEF_Routine(void) __attribute__ ((interrupt("UNDEF")));
 void fat_initialize(void);
 
 void delay_ms(int count);
-
-
+/*
 void ANTAP1_Config(void);
 void ANTAP1_Reset(void);
 void ANTAP1_AssignCh(unsigned char);
@@ -155,6 +154,7 @@ void ANTAP1_SetChPeriod(unsigned char, unsigned char);
 void ANTAP1_OpenCh(unsigned char);
 void ANTAP1_AssignNetwork(unsigned char);
 void ANTAP1_SetSearchTimeout(unsigned char);
+*/
 void ANTAP1_RequestChanID(unsigned char);
 void set_time(void);
 void get_time(void);
@@ -162,61 +162,55 @@ int parseANT(unsigned char chr);
 void add_time_stamp(void);
 void must_we_write(void);
 
-void ANTAP1_Config (void)
-{
-    ANTAP1_Reset();
-    delay_ms(50);
-    
-    //HR
-    ANTAP1_AssignCh(0x00);
-    delay_ms(50);
-    ANTAP1_SetChId(0x00,DEVTYPE_HRM);
-    delay_ms(50);
-    ANTAP1_AssignNetwork(0x00);
-    delay_ms(50);
-    ANTAP1_SetSearchTimeout(0x00);
-    delay_ms(50);
-    ANTAP1_SetChRFFreq(0x00);
-    delay_ms(50);
-    ANTAP1_SetChPeriod(0x00, DEVPERIOD_HRM);
-    delay_ms(50);
-    ANTAP1_OpenCh(0x00);
-    delay_ms(50);
+static const char antap1_config[] =
+    "w[4a][00] # reset\n"
+    "d500\n"
+    "# Assign the network only once, since it's always the same\n"
+    "w[46][01][b9][a5][21][fb][bd][72][c3][45] # ANTAP1_AssignNetwork(0x01)\n"
+    "\n"
+    "# HR\n"
+    "w[24][00][00][01] # ANTAP1_AssignCh(0x00)\n"
+    "d50\n"
+    "w[51][00][00][00][78][00] # ANTAP1_SetChId(0x00,DEVTYPE_HRM)\n"
+    "d50\n"
+    "w[44][00][1e] # ANTAP1_SetSearchTimeout(0x00)\n"
+    "d50\n"
+    "w[45][00][39] # ANTAP1_SetChRFFreq(0x00)\n"
+    "d50\n"
+    "w[43][00][86][1f] # ANTAP1_SetChPeriod(0x00, DEVPERIOD_HRM)\n"
+    "d50\n"
+    "w[4b][00] # ANTAP1_OpenCh(0x00)\n"
+    "d50\n"
+    "\n"
+    "# Power\n"
+    "w[24][01][00][01] # ANTAP1_AssignCh(0x01)\n"
+    "d50\n"
+    "w[51][01][00][00][0b][00] # ANTAP1_SetChId(0x01,DEVTYPE_PWR)\n"
+    "d50\n"
+    "w[44][01][1e] # ANTAP1_SetSearchTimeout(0x01)\n"
+    "d50\n"
+    "w[45][01][39] # ANTAP1_SetChRFFreq(0x01)\n"
+    "d50\n"
+    "w[43][01][f6][1f] # ANTAP1_SetChPeriod(0x01, DEVPERIOD_PWR)\n"
+    "d50\n"
+    "w[4b][01] # ANTAP1_OpenCh(0x01)\n"
+    "d50\n"
+    "\n"
+    "# Speed Cadence\n"
+    "w[24][02][00][01] # ANTAP1_AssignCh(0x02)\n"
+    "d50\n"
+    "w[51][02][00][00][79][00] # ANTAP1_SetChId(0x02,DEVTYPE_BIKE)\n"
+    "d50\n"
+    "w[44][02][1e] # ANTAP1_SetSearchTimeout(0x02)\n"
+    "d50\n" 
+    "w[45][02][39] # ANTAP1_SetChRFFreq(0x02)\n"
+    "d50\n"
+    "w[43][02][96][1f] # ANTAP1_SetChPeriod(0x02, DEVPERIOD_BIKE)\n"
+    "d50\n"
+    "w[4b][02] # ANTAP1_OpenCh(0x02)\n"
+    "d50\n\n";
 
-    //Power
-    ANTAP1_AssignCh(0x01);
-    delay_ms(50);
-    ANTAP1_SetChId(0x01,DEVTYPE_PWR); 
-    delay_ms(50);
-    ANTAP1_AssignNetwork(0x01);
-    delay_ms(50);
-    ANTAP1_SetSearchTimeout(0x01);
-    delay_ms(50);
-    ANTAP1_SetChRFFreq(0x01);
-    delay_ms(50);
-    ANTAP1_SetChPeriod(0x01, DEVPERIOD_PWR);
-    delay_ms(50);
-    ANTAP1_OpenCh(0x01);
-    delay_ms(50);
-
-    //Speed Cadence
-    ANTAP1_AssignCh(0x02);
-    delay_ms(50);
-    ANTAP1_SetChId(0x02,DEVTYPE_BIKE);
-    delay_ms(50);
-    ANTAP1_AssignNetwork(0x02);
-    delay_ms(50);
-    ANTAP1_SetSearchTimeout(0x02);
-    delay_ms(50);
-    ANTAP1_SetChRFFreq(0x02);
-    delay_ms(50);
-    ANTAP1_SetChPeriod(0x02, DEVPERIOD_BIKE);
-    delay_ms(50);
-    ANTAP1_OpenCh(0x02);
-    delay_ms(50);
-}
-
-
+#if 0
 void ANTAP1_SetSearchTimeout(unsigned char chan)
 {
     unsigned char i;
@@ -310,23 +304,6 @@ void ANTAP1_SetChRFFreq (unsigned char chan)
 
 }
 
-// Assigns CH=0, RF Freq
-void ANTAP1_RequestChanID(unsigned char chan) 
-{
-    unsigned char i;
-    unsigned char setup[6];
-    
-    setup[0] = 0xa4;
-    setup[1] = 0x02;
-    setup[2] = 0x4d;
-    setup[3] = chan;        // ChanNum
-    setup[4] = 0x51;        //Extra Info
-    setup[5] = (0xa4^0x02^0x4d^chan^0x51);
-    
-    for(i = 0 ; i < 6 ; i++)
-        putc_serial0(setup[i]);
-}
-
 void ANTAP1_SetChPeriod (unsigned char chan, unsigned char device) 
 {
     unsigned char i;
@@ -382,6 +359,27 @@ void ANTAP1_OpenCh (unsigned char chan)
 
 }
 
+#endif
+
+// Assigns CH=0, RF Freq
+void ANTAP1_RequestChanID(unsigned char chan) 
+{
+    unsigned char i;
+    unsigned char setup[6];
+    
+    setup[0] = 0xa4;
+    setup[1] = 0x02;
+    setup[2] = 0x4d;
+    setup[3] = chan;        // ChanNum
+    setup[4] = 0x51;        //Extra Info
+    setup[5] = (0xa4^0x02^0x4d^chan^0x51);
+    
+    for(i = 0 ; i < 6 ; i++)
+        putc_serial0(setup[i]);
+}
+
+
+
 int16_t read_byte(void) { 
     uint8_t buf;
     int c=fat16_read_file(handle, &buf, 1);
@@ -390,39 +388,54 @@ int16_t read_byte(void) {
     return (int16_t)buf; 
 }
 
-void seek(int offset) {
-    fat16_seek_file(handle, offset, FAT16_SEEK_SET);
+void seek(int32_t offset) {
+    fat16_seek_file(handle, &offset, FAT16_SEEK_SET);
 }
 
+// actually 1/1024 second counts
 uint16_t get_milliseconds(void) {
     uint32_t t;
+    uint32_t s;
     do {
-        t = CTC & 0x7ffe;
-    } while (t != (CTC & 0x7ffe));
+        t = CTC;
+        s = SEC;
+    } while (t != CTC);
+
+    t |= s << 16;
     
     t >>=1; // this gives 32768 Hz
     t >>=5; // divide by 32 for 1024 Hz
     
-    return t & 0xffff;
+    uint16_t r=t & 0xffff;
+    return r;
 }
 
 void write_ant(char *ant) {
     int i;
     int l=autoant_antlen(ant);
+
+    statLight(0,ON);
     
     for(i = 0 ; i < l ; i++)
        putc_serial0(ant[i]);
 
     putc_serial0(0);
     putc_serial0(0);
+
+    statLight(0,OFF);
 }
+
+void flush_ant(void) {
+    while (U0LSR & 0x1) U0RBR;
+}
+
 
 #define ANT_MAX_LENGTH (30)
 #define ANT_BUF_LEN 32
 uint8_t ant_rx_buf[ANT_BUF_LEN];
 #define ANT_SYNC_BYTE (0xa4)
 
-uint8_t *receive_ant(int16_t timeout) {
+uint8_t *receive_ant(int timeout) {
   enum States {ST_WAIT_FOR_SYNC, ST_GET_LENGTH, ST_GET_MESSAGE_ID, ST_GET_DATA, ST_VALIDATE_PACKET};
   static enum States state = ST_WAIT_FOR_SYNC;
 
@@ -493,6 +506,7 @@ uint8_t *receive_ant(int16_t timeout) {
 
 void write_out(const uint8_t *c) {
     fat16_write_file(out_handle,c,strlen(c));
+    sd_raw_sync();
 }
 
 void warn_message(int warnno, int linenumber, int pos) {
@@ -514,7 +528,8 @@ autoant_ops_t ops={
     .seek=seek,
     .write=write_out,
     .warn=warn_message,
-    .get_milliseconds=get_milliseconds
+    .get_milliseconds=get_milliseconds,
+    .flush_ant=flush_ant
 };
 
 /*******************************************************
@@ -554,14 +569,36 @@ int main (void)
     }
     
     out_handle = root_open("out.txt");
-    fat16_seek_file(out_handle,0,FAT16_SEEK_END);
-    fat16_write_file(out_handle,"startup\n",strlen("startup\n"));
-    
+    if (!out_handle)
+        out_handle = root_open_new("out.txt");
+
+    int32_t zero=0;
+    fat16_seek_file(out_handle,&zero,FAT16_SEEK_END);
+    fat16_write_file(out_handle,"startup-----------\n",
+                         strlen("startup-----------\n"));
+
     handle = root_open("init.ant");
-    if (handle) {
-      autoant_exec(&ops);
-      fat16_close_file(handle);
+    if (0==handle) {
+        fat16_write_file(out_handle,
+                         "no init file found\n",
+                         strlen("no init file found\n"));
+        handle = root_open_new("init.ant");
+        fat16_write_file(handle,
+                         antap1_config,
+                         strlen(antap1_config));
+        autoant_exec(&ops);
+        fat16_close_file(handle);
+        handle = root_open("init.ant");
+    } else {
+        fat16_write_file(out_handle,
+                         "found init file\n",
+                         strlen("found init file\n"));
     }
+
+    autoant_exec(&ops);
+    fat16_close_file(handle);
+    fat16_close_file(out_handle);
+
     count++;
     string_printf(name,"ANT%02d.gce",count);
     while(root_file_exists(name))
@@ -943,7 +980,7 @@ void mode_0(void) // Auto UART mode
 {
     setup_uart0(baud,1);
     stringSize = 512;
-    ANTAP1_Config();
+    // ANTAP1_Config();
     mode_action();
 }
 

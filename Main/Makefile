@@ -36,6 +36,8 @@ TARGET = main
 # use file-extension c for "c-only"-files
 SRC = $(TARGET).c 
 
+SRC += autoant.c
+
 #Needed most of the time for basic functions
 SRC += $(LIBPATH)syscalls.c 
 SRC += $(LIBPATH)rprintf.c 
@@ -250,14 +252,16 @@ LPC21ISP_CONTROL = -control
 ## DIRARMBIN = $(DIRAVR)/bin/
 ## DIRAVRUTILS = $(DIRAVR)/utils/bin/
 
+COMPILER=arm-elf-eabi
+
 # Define programs and commands.
 SHELL = sh
-CC = arm-elf-gcc
-CPP = arm-elf-g++
-OBJCOPY = arm-elf-objcopy
-OBJDUMP = arm-elf-objdump
-SIZE = arm-elf-size
-NM = arm-elf-nm
+CC = $(COMPILER)-gcc
+CPP = $(COMPILER)-g++
+OBJCOPY = $(COMPILER)-objcopy
+OBJDUMP = $(COMPILER)-objdump
+SIZE = $(COMPILER)-size
+NM = $(COMPILER)-nm
 REMOVE = rm -f
 COPY = cp
 
@@ -313,7 +317,7 @@ all: begin gccversion sizebefore build sizeafter finished end
 #IMGEXT=hex
 #else 
 #ifeq ($(FORMAT),binary)
-build: elf bin lss sym hex FW.SFE
+build: install #elf bin lss sym hex FW.SFE
 
 #bin: $(TARGET).bin
 hex: $(TARGET).hex
@@ -387,7 +391,7 @@ endif
 	@echo
 	@echo $(MSG_FLASH) $@
 	$(OBJCOPY) -O ihex $< $@
-	
+
 # Create final output file (.bin) from ELF output file.
 %.bin: %.elf
 	@echo
@@ -400,6 +404,11 @@ FW.SFE: main.elf
 	@echo $(MSG_FLASH) $@
 	$(OBJCOPY) -O binary $< $@
 
+install: FW.SFE
+	cp FW.SFE /media/QLOG/
+
+TAGS: $(SRC)
+	etags $(SRC)
 
 # Create extended listing file from ELF output file.
 # testing: option -C
