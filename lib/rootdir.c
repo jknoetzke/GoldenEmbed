@@ -10,7 +10,7 @@ struct fat16_dir_entry_struct dir_entry;
 struct fat16_fs_struct* fs;
 struct partition_struct* partition;
 struct fat16_dir_struct* dd;
-struct fat16_file_struct * fd;
+// struct fat16_file_struct * fd;
 
 int openroot(void)
 {
