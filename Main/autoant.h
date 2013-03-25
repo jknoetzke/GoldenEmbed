@@ -63,6 +63,7 @@ enum { AUTOANT_WARN_LOOP_NESTING = -1,
        AUTOANT_WARN_STACK_OVERFLOW = -3,
        AUTOANT_WARN_TRUNCATED_LINE = -4,
        AUTOANT_WARN_GARBAGE_IN_BRACKETS = -5,
-       AUTOANT_WARN_SIZE_EXCEEDED = -6 }; // see autoant_interpret_warning()
+       AUTOANT_WARN_SIZE_EXCEEDED = -6,
+       AUTOANT_WARN_HARD_TIMEOUT = -7 }; // see autoant_interpret_warning()
 
 #endif

@@ -79,6 +79,8 @@ char *autoant_interpret_warning(int warnno) {
         return "Line exceeded compiled-in limit";
     case AUTOANT_WARN_GARBAGE_IN_BRACKETS:
         return "Found unknown (non-hexadecimal) character within []";
+    case AUTOANT_WARN_HARD_TIMEOUT:
+        return "Failed hard read timeout";
     default:
         return "Unknown warning";
     }
@@ -265,11 +267,17 @@ static int autoant_run_line(char *line, int len) {
 
         while ((timeremain = timeout - op->get_milliseconds())>0) {
             c2=op->receive_ant_message(timeremain);
-            if (c2 && memcmp(c2,c,autoant_antlen(c))) break;
+            
+            if (memcmp(c2,c,autoant_antlen(c))) c2 = NULL;
+
+            if (c2) break;
         }
 
         if (c2==NULL) {
-            if (hard_fail) return -1;
+            if (hard_fail) {
+                WARN(AUTOANT_WARN_HARD_TIMEOUT);
+                return -1;
+            }
         }
 
     } else if (LINE_STARTSWITH("pauseBreak")) {
