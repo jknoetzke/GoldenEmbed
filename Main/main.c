@@ -106,7 +106,7 @@ int isBroadCast = FALSE;
 int currentChannel=-1;
 
 // Default Settings
-static int baud = 115200; //38400; //9600;
+static int baud = 9600; //115200; //38400; //9600;
 static char trig = '$';
 static short frame = 100;
 
@@ -163,13 +163,14 @@ void add_time_stamp(void);
 void must_we_write(void);
 
 static const char antap1_config[] =
+    "# baudrate = 115200\n"
     "w[4a][00] # reset\n"
     "d500\n"
     "# Assign the network only once, since it's always the same\n"
     "w[46][01][b9][a5][21][fb][bd][72][c3][45] # ANTAP1_AssignNetwork(0x01)\n"
     "\n"
     "# HR\n"
-    "w[24][00][00][01] # ANTAP1_AssignCh(0x00)\n"
+    "w[42][00][00][01] # ANTAP1_AssignCh(0x00)\n"
     "d50\n"
     "w[51][00][00][00][78][00] # ANTAP1_SetChId(0x00,DEVTYPE_HRM)\n"
     "d50\n"
@@ -183,7 +184,7 @@ static const char antap1_config[] =
     "d50\n"
     "\n"
     "# Power\n"
-    "w[24][01][00][01] # ANTAP1_AssignCh(0x01)\n"
+    "w[42][01][00][01] # ANTAP1_AssignCh(0x01)\n"
     "d50\n"
     "w[51][01][00][00][0b][00] # ANTAP1_SetChId(0x01,DEVTYPE_PWR)\n"
     "d50\n"
@@ -197,7 +198,7 @@ static const char antap1_config[] =
     "d50\n"
     "\n"
     "# Speed Cadence\n"
-    "w[24][02][00][01] # ANTAP1_AssignCh(0x02)\n"
+    "w[42][02][00][01] # ANTAP1_AssignCh(0x02)\n"
     "d50\n"
     "w[51][02][00][00][79][00] # ANTAP1_SetChId(0x02,DEVTYPE_BIKE)\n"
     "d50\n"
@@ -595,6 +596,30 @@ int main (void)
                          strlen("found init file\n"));
     }
 
+    {
+        char baudrate_buffer[200];
+
+        int l=fat16_read_file(handle, &baudrate_buffer, 200);
+
+        for (i=0; i<l; i++) {
+            if (0 == memcmp(baudrate_buffer+i, "baudrate", strlen("baudrate"))) {
+                i += strlen("baudrate");
+                while ((i+4<l) && isspace(baudrate_buffer[i]))
+                    i++;
+                if (baudrate_buffer[i] != '=') 
+                    break;
+                i++;
+                
+                int new_baudrate=atoi(baudrate_buffer+i);
+                setup_uart0(new_baudrate, 0);                
+                
+            }
+        }
+    }
+
+    seek(0);
+
+
     autoant_exec(&ops);
     fat16_close_file(handle);
     fat16_close_file(out_handle);
@@ -893,46 +918,10 @@ void setup_uart0(int newbaud, char want_ints)
     baud = newbaud;
     U0LCR = 0x83;   // 8 bits, no parity, 1 stop bit, DLAB = 1
 
-    if(baud == 1200)
-    {
-        U0DLM = 0x0C;
-        U0DLL = 0x00;
-    }
-    else if(baud == 2400)
-    {
-        U0DLM = 0x06;
-        U0DLL = 0x00;
-    }
-    else if(baud == 4800)
-    {
-        U0DLM = 0x03;
-        U0DLL = 0x00;
-    }
-    else if(baud == 9600)
-    {
-        U0DLM = 0x01;
-        U0DLL = 0x80;
-    }
-    else if(baud == 19200)
-    {
-        U0DLM = 0x00;
-        U0DLL = 0xC0;
-    }
-    else if(baud == 38400)
-    {
-        U0DLM = 0x00;
-        U0DLL = 0x60;
-    }
-    else if(baud == 57600)
-    {
-        U0DLM = 0x00;
-        U0DLL = 0x40;
-    }
-    else if(baud == 115200)
-    {
-        U0DLM = 0x00;
-        U0DLL = 0x20;
-    }
+    int32_t bauddiv=3686400 / baud;
+
+    U0DLM = (bauddiv >> 8) & 0xff;
+    U0DLL = bauddiv & 0xff;
 
     U0FCR = 0x01;
     U0LCR = 0x03;
