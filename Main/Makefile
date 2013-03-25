@@ -38,8 +38,6 @@ SRC = $(TARGET).c
 
 SRC += autoant.c
 
-SRC += autoant.c
-
 #Needed most of the time for basic functions
 SRC += $(LIBPATH)syscalls.c
 SRC += $(LIBPATH)rprintf.c
