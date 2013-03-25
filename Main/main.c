@@ -106,7 +106,11 @@ int isBroadCast = FALSE;
 int currentChannel=-1;
 
 // Default Settings
+<<<<<<< HEAD
 static int baud = 115200; //38400; //9600;
+=======
+static int baud = 9600; //115200; //38400; //9600;
+>>>>>>> d8e33a4
 static char trig = '$';
 static short frame = 100;
 
@@ -163,13 +167,21 @@ void add_time_stamp(void);
 void must_we_write(void);
 
 static const char antap1_config[] =
+<<<<<<< HEAD
+=======
+    "# baudrate = 115200\n"
+>>>>>>> d8e33a4
     "w[4a][00] # reset\n"
     "d500\n"
     "# Assign the network only once, since it's always the same\n"
     "w[46][01][b9][a5][21][fb][bd][72][c3][45] # ANTAP1_AssignNetwork(0x01)\n"
     "\n"
     "# HR\n"
+<<<<<<< HEAD
     "w[24][00][00][01] # ANTAP1_AssignCh(0x00)\n"
+=======
+    "w[42][00][00][01] # ANTAP1_AssignCh(0x00)\n"
+>>>>>>> d8e33a4
     "d50\n"
     "w[51][00][00][00][78][00] # ANTAP1_SetChId(0x00,DEVTYPE_HRM)\n"
     "d50\n"
@@ -183,7 +195,11 @@ static const char antap1_config[] =
     "d50\n"
     "\n"
     "# Power\n"
+<<<<<<< HEAD
     "w[24][01][00][01] # ANTAP1_AssignCh(0x01)\n"
+=======
+    "w[42][01][00][01] # ANTAP1_AssignCh(0x01)\n"
+>>>>>>> d8e33a4
     "d50\n"
     "w[51][01][00][00][0b][00] # ANTAP1_SetChId(0x01,DEVTYPE_PWR)\n"
     "d50\n"
@@ -197,7 +213,11 @@ static const char antap1_config[] =
     "d50\n"
     "\n"
     "# Speed Cadence\n"
+<<<<<<< HEAD
     "w[24][02][00][01] # ANTAP1_AssignCh(0x02)\n"
+=======
+    "w[42][02][00][01] # ANTAP1_AssignCh(0x02)\n"
+>>>>>>> d8e33a4
     "d50\n"
     "w[51][02][00][00][79][00] # ANTAP1_SetChId(0x02,DEVTYPE_BIKE)\n"
     "d50\n"
@@ -377,7 +397,163 @@ void ANTAP1_RequestChanID(unsigned char chan)
     for(i = 0 ; i < 6 ; i++)
         putc_serial0(setup[i]);
 }
+<<<<<<< HEAD
+=======
 
+
+
+int16_t read_byte(void) {
+    uint8_t buf;
+    int c=fat16_read_file(handle, &buf, 1);
+    if (c==0)
+        return -1;
+    return (int16_t)buf;
+}
+
+void seek(int32_t offset) {
+    fat16_seek_file(handle, &offset, FAT16_SEEK_SET);
+}
+
+// actually 1/1024 second counts
+uint16_t get_milliseconds(void) {
+    uint32_t t;
+    uint32_t s;
+    do {
+        t = CTC;
+        s = SEC;
+    } while (t != CTC);
+
+    t |= s << 16;
+
+    t >>=1; // this gives 32768 Hz
+    t >>=5; // divide by 32 for 1024 Hz
+
+    uint16_t r=t & 0xffff;
+    return r;
+}
+
+void write_ant(char *ant) {
+    int i;
+    int l=autoant_antlen(ant);
+
+    statLight(0,ON);
+
+    for(i = 0 ; i < l ; i++)
+       putc_serial0(ant[i]);
+
+    putc_serial0(0);
+    putc_serial0(0);
+
+    statLight(0,OFF);
+}
+
+void flush_ant(void) {
+    while (U0LSR & 0x1) U0RBR;
+}
+
+
+#define ANT_MAX_LENGTH (30)
+#define ANT_BUF_LEN 32
+uint8_t ant_rx_buf[ANT_BUF_LEN];
+#define ANT_SYNC_BYTE (0xa4)
+
+uint8_t *receive_ant(int timeout) {
+  enum States {ST_WAIT_FOR_SYNC, ST_GET_LENGTH, ST_GET_MESSAGE_ID, ST_GET_DATA, ST_VALIDATE_PACKET};
+  static enum States state = ST_WAIT_FOR_SYNC;
+
+  uint16_t t0 = get_milliseconds();
+  static int length;
+  static uint8_t checksum;
+  static int chars_in_buf=0;
+
+  while (1) {
+    int16_t time_remaining = t0 + timeout - get_milliseconds();
+    if (time_remaining < 0) return NULL;
+
+    if (!(U0LSR & 0x1)) continue;
+    uint8_t c=U0RBR;
+
+    switch (state) {
+    case ST_WAIT_FOR_SYNC:
+      if (c == ANT_SYNC_BYTE) {
+	state = ST_GET_LENGTH;
+	ant_rx_buf[chars_in_buf++] = c;
+	checksum = ANT_SYNC_BYTE;
+
+      }
+      break;
+
+    case ST_GET_LENGTH:
+      if ((c == 0) || (c > ANT_MAX_LENGTH)) {
+	chars_in_buf=0;
+	state = ST_WAIT_FOR_SYNC;
+      }
+      else {
+	ant_rx_buf[chars_in_buf++] = c;
+	checksum ^= c;
+	length = chars_in_buf+c+1;
+	state = ST_GET_MESSAGE_ID;
+      }
+      break;
+
+    case ST_GET_MESSAGE_ID:
+      ant_rx_buf[chars_in_buf++] = c;
+      checksum ^= c;
+      state = ST_GET_DATA;
+      break;
+
+    case ST_GET_DATA:
+      ant_rx_buf[chars_in_buf++] = c;
+      checksum ^= c;
+      if (chars_in_buf >= length){
+	state = ST_VALIDATE_PACKET;
+      }
+      break;
+
+    case ST_VALIDATE_PACKET:
+      ant_rx_buf[chars_in_buf++] = c;
+
+      if (checksum == c){
+	chars_in_buf=0; // ready for next time
+	state = ST_WAIT_FOR_SYNC;
+	return ant_rx_buf;
+      }
+      // chksum fail. start looking for message again
+      chars_in_buf=0;
+      state = ST_WAIT_FOR_SYNC;
+      break;
+    }
+  }
+}
+
+void write_out(const uint8_t *c) {
+    fat16_write_file(out_handle,c,strlen(c));
+    sd_raw_sync();
+}
+
+void warn_message(int warnno, int linenumber, int pos) {
+    char output_string[100];
+
+    string_printf(output_string,
+                  "At line %d byte %d : #%d (%s)\n",
+                  linenumber, pos, warnno,
+                  autoant_interpret_warning(warnno));
+    output_string[99]=0;
+
+    write_out(output_string);
+}
+>>>>>>> d8e33a4
+
+autoant_ops_t ops={
+    .receive_ant_message=receive_ant,
+    .send_ant_message=write_ant,
+    .get_char=read_byte,
+    .seek=seek,
+    .write=write_out,
+    .warn=warn_message,
+    .get_milliseconds=get_milliseconds,
+    .flush_ant=flush_ant
+};
 
 
 int16_t read_byte(void) {
@@ -595,6 +771,33 @@ int main (void)
                          strlen("found init file\n"));
     }
 
+<<<<<<< HEAD
+=======
+    {
+        char baudrate_buffer[200];
+
+        int l=fat16_read_file(handle, &baudrate_buffer, 200);
+
+        for (i=0; i<l; i++) {
+            if (0 == memcmp(baudrate_buffer+i, "baudrate", strlen("baudrate"))) {
+                i += strlen("baudrate");
+                while ((i+4<l) && isspace(baudrate_buffer[i]))
+                    i++;
+                if (baudrate_buffer[i] != '=') 
+                    break;
+                i++;
+                
+                int new_baudrate=atoi(baudrate_buffer+i);
+                setup_uart0(new_baudrate, 0);                
+                
+            }
+        }
+    }
+
+    seek(0);
+
+
+>>>>>>> d8e33a4
     autoant_exec(&ops);
     fat16_close_file(handle);
     fat16_close_file(out_handle);
@@ -893,6 +1096,7 @@ void setup_uart0(int newbaud, char want_ints)
     baud = newbaud;
     U0LCR = 0x83;   // 8 bits, no parity, 1 stop bit, DLAB = 1
 
+<<<<<<< HEAD
     if(baud == 1200)
     {
         U0DLM = 0x0C;
@@ -933,6 +1137,12 @@ void setup_uart0(int newbaud, char want_ints)
         U0DLM = 0x00;
         U0DLL = 0x20;
     }
+=======
+    int32_t bauddiv=3686400 / baud;
+
+    U0DLM = (bauddiv >> 8) & 0xff;
+    U0DLL = bauddiv & 0xff;
+>>>>>>> d8e33a4
 
     U0FCR = 0x01;
     U0LCR = 0x03;
