@@ -11,7 +11,7 @@
 
    To build this firmware you must install either WinARM: http://www.siwawi.arubi.uni-kl.de/avr_projects/arm_projects/ or GnuARM: http://www.gnuarm.com/ for Linux and OS X.
 
-   Once you have the firmware built, simply copy the the FW.SFE to a FAT16 formatted (important) SD card loaded in your Logomatic. Then simply pull out the USB cable. This will force the boot loader to load up the firmware.
+   Once you have the firmware built, simply copy the FW.SFE to a FAT16 formatted (important) SD card loaded in your Logomatic. Then simply pull out the USB cable. This will force the boot loader to load up the firmware.
 
    The stat lights will blink to indicate that the firmware has started. Then, after a few seconds you should see each stat light blink indicating that it is writing to disk. You obviously need an ANT+ device to be in range.
 
