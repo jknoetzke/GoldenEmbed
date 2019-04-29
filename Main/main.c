@@ -53,6 +53,8 @@
 
 #include "serial.h"
 
+#include "autoant.h"
+
 /*******************************************************
  *                   Global Variables
  ******************************************************/
@@ -77,10 +79,6 @@
 //#define DEVPERIOD_FOOT	0xc6	/* ANT+ Foot pod */
 #define DEVPERIOD_PWR	0xf6	/* ANT+ Power meter */
 
-
-
-
-
 #define FALSE 0
 #define TRUE 1
 
@@ -94,6 +92,8 @@ char get_frame = 0;
 
 signed int stringSize;
 struct fat16_file_struct * handle; //Actual Log File.
+struct fat16_file_struct * out_handle;
+
 char stringBuf[256];
 struct timestamp ts;
 
@@ -106,7 +106,7 @@ int isBroadCast = FALSE;
 int currentChannel=-1;
 
 // Default Settings
-static int baud = 9600;
+static int baud = 9600; //115200; //38400; //9600;
 static char trig = '$';
 static short frame = 100;
 
@@ -144,8 +144,7 @@ void UNDEF_Routine(void) __attribute__ ((interrupt("UNDEF")));
 void fat_initialize(void);
 
 void delay_ms(int count);
-void flashBoobies(int num_of_times);
-
+/*
 void ANTAP1_Config(void);
 void ANTAP1_Reset(void);
 void ANTAP1_AssignCh(unsigned char);
@@ -155,6 +154,7 @@ void ANTAP1_SetChPeriod(unsigned char, unsigned char);
 void ANTAP1_OpenCh(unsigned char);
 void ANTAP1_AssignNetwork(unsigned char);
 void ANTAP1_SetSearchTimeout(unsigned char);
+*/
 void ANTAP1_RequestChanID(unsigned char);
 void set_time(void);
 void get_time(void);
@@ -162,61 +162,56 @@ int parseANT(unsigned char chr);
 void add_time_stamp(void);
 void must_we_write(void);
 
-void ANTAP1_Config (void)
-{
-    ANTAP1_Reset();
-    delay_ms(50);
-    
-    //HR
-    ANTAP1_AssignCh(0x00);
-    delay_ms(50);
-    ANTAP1_SetChId(0x00,DEVTYPE_HRM);
-    delay_ms(50);
-    ANTAP1_AssignNetwork(0x00);
-    delay_ms(50);
-    ANTAP1_SetSearchTimeout(0x00);
-    delay_ms(50);
-    ANTAP1_SetChRFFreq(0x00);
-    delay_ms(50);
-    ANTAP1_SetChPeriod(0x00, DEVPERIOD_HRM);
-    delay_ms(50);
-    ANTAP1_OpenCh(0x00);
-    delay_ms(50);
+static const char antap1_config[] =
+    "# baudrate = 115200\n"
+    "w[4a][00] # reset\n"
+    "d500\n"
+    "# Assign the network only once, since it's always the same\n"
+    "w[46][01][b9][a5][21][fb][bd][72][c3][45] # ANTAP1_AssignNetwork(0x01)\n"
+    "\n"
+    "# HR\n"
+    "w[42][00][00][01] # ANTAP1_AssignCh(0x00)\n"
+    "d50\n"
+    "w[51][00][00][00][78][00] # ANTAP1_SetChId(0x00,DEVTYPE_HRM)\n"
+    "d50\n"
+    "w[44][00][1e] # ANTAP1_SetSearchTimeout(0x00)\n"
+    "d50\n"
+    "w[45][00][39] # ANTAP1_SetChRFFreq(0x00)\n"
+    "d50\n"
+    "w[43][00][86][1f] # ANTAP1_SetChPeriod(0x00, DEVPERIOD_HRM)\n"
+    "d50\n"
+    "w[4b][00] # ANTAP1_OpenCh(0x00)\n"
+    "d50\n"
+    "\n"
+    "# Power\n"
+    "w[42][01][00][01] # ANTAP1_AssignCh(0x01)\n"
+    "d50\n"
+    "w[51][01][00][00][0b][00] # ANTAP1_SetChId(0x01,DEVTYPE_PWR)\n"
+    "d50\n"
+    "w[44][01][1e] # ANTAP1_SetSearchTimeout(0x01)\n"
+    "d50\n"
+    "w[45][01][39] # ANTAP1_SetChRFFreq(0x01)\n"
+    "d50\n"
+    "w[43][01][f6][1f] # ANTAP1_SetChPeriod(0x01, DEVPERIOD_PWR)\n"
+    "d50\n"
+    "w[4b][01] # ANTAP1_OpenCh(0x01)\n"
+    "d50\n"
+    "\n"
+    "# Speed Cadence\n"
+    "w[42][02][00][01] # ANTAP1_AssignCh(0x02)\n"
+    "d50\n"
+    "w[51][02][00][00][79][00] # ANTAP1_SetChId(0x02,DEVTYPE_BIKE)\n"
+    "d50\n"
+    "w[44][02][1e] # ANTAP1_SetSearchTimeout(0x02)\n"
+    "d50\n"
+    "w[45][02][39] # ANTAP1_SetChRFFreq(0x02)\n"
+    "d50\n"
+    "w[43][02][96][1f] # ANTAP1_SetChPeriod(0x02, DEVPERIOD_BIKE)\n"
+    "d50\n"
+    "w[4b][02] # ANTAP1_OpenCh(0x02)\n"
+    "d50\n\n";
 
-    //Power
-    ANTAP1_AssignCh(0x01);
-    delay_ms(50);
-    ANTAP1_SetChId(0x01,DEVTYPE_PWR); 
-    delay_ms(50);
-    ANTAP1_AssignNetwork(0x01);
-    delay_ms(50);
-    ANTAP1_SetSearchTimeout(0x01);
-    delay_ms(50);
-    ANTAP1_SetChRFFreq(0x01);
-    delay_ms(50);
-    ANTAP1_SetChPeriod(0x01, DEVPERIOD_PWR);
-    delay_ms(50);
-    ANTAP1_OpenCh(0x01);
-    delay_ms(50);
-
-    //Speed Cadence
-    ANTAP1_AssignCh(0x02);
-    delay_ms(50);
-    ANTAP1_SetChId(0x02,DEVTYPE_BIKE);
-    delay_ms(50);
-    ANTAP1_AssignNetwork(0x02);
-    delay_ms(50);
-    ANTAP1_SetSearchTimeout(0x02);
-    delay_ms(50);
-    ANTAP1_SetChRFFreq(0x02);
-    delay_ms(50);
-    ANTAP1_SetChPeriod(0x02, DEVPERIOD_BIKE);
-    delay_ms(50);
-    ANTAP1_OpenCh(0x02);
-    delay_ms(50);
-}
-
-
+#if 0
 void ANTAP1_SetSearchTimeout(unsigned char chan)
 {
     unsigned char i;
@@ -228,25 +223,25 @@ void ANTAP1_SetSearchTimeout(unsigned char chan)
     setup[3] = chan; // Channel
     setup[4] = 0x1e;
     setup[5] = (0xa4^0x02^0x44^chan^0x1e);  // Checksum
-    
+
     for(i = 0 ; i < 6 ; i++)
        putc_serial0(setup[i]);
-   
+
 }
 
 
 // Resets module
-void ANTAP1_Reset (void) 
+void ANTAP1_Reset (void)
 {
     unsigned char i;
     unsigned char setup[5];
-    
+
     setup[0] = 0xa4; // SYNC Byte
     setup[1] = 0x01; // LENGTH Byte
     setup[2] = 0x4a; // ID Byte
     setup[3] = 0x00; // Data Byte N (N=LENGTH)
     setup[4] = 0xef; // Checksum
-    
+
     for(i = 0 ; i < 5 ; i++)
        putc_serial0(setup[i]);
 }
@@ -259,28 +254,28 @@ void ANTAP1_AssignNetwork(unsigned char chan)
     setup[0] = 0xa4; //Sync
     setup[1] = 0x09; //Length
     setup[2] = MESG_NETWORK_KEY_ID;
-    setup[3] = chan; //chan 
+    setup[3] = chan; //chan
     setup[4] = 0xb9;
-    setup[5] = 0xa5;     
-    setup[6] = 0x21;    
-    setup[7] = 0xfb; 
-    setup[8] = 0xbd; 
-    setup[9] = 0x72; 
-    setup[10] = 0xc3; 
-    setup[11] = 0x45; 
+    setup[5] = 0xa5;
+    setup[6] = 0x21;
+    setup[7] = 0xfb;
+    setup[8] = 0xbd;
+    setup[9] = 0x72;
+    setup[10] = 0xc3;
+    setup[11] = 0x45;
     setup[12] = (0xa4^0x09^MESG_NETWORK_KEY_ID^chan^0xb9^0xa5^0x21^0xfb^0xbd^0x72^0xc3^0x45);
-    
+
     for(i = 0 ; i < 13 ; i++)
       putc_serial0(setup[i]);
 }
 
 
 // Assigns CH=0, CH Type=00(RX), Net#=0
-void ANTAP1_AssignCh (unsigned char chan) 
+void ANTAP1_AssignCh (unsigned char chan)
 {
     unsigned char i;
     unsigned char setup[7];
-   
+
     setup[0] = 0xa4;
     setup[1] = 0x03;
     setup[2] = 0x42;
@@ -288,46 +283,29 @@ void ANTAP1_AssignCh (unsigned char chan)
     setup[4] = chanType;    // ChanType
     setup[5] = netNum;        // NetNum
     setup[6] = (0xa4^0x03^0x42^chan^chanType^netNum);
-    
+
     for(i = 0 ; i < 7 ; i++)
       putc_serial0(setup[i]);
 }
 
-void ANTAP1_SetChRFFreq (unsigned char chan) 
+void ANTAP1_SetChRFFreq (unsigned char chan)
 {
     unsigned char i;
     unsigned char setup[6];
-   
+
     setup[0] = 0xa4;
     setup[1] = 0x02;
     setup[2] = 0x45;
     setup[3] = chan;        // ChanNum
     setup[4] = 0x39;        // RF Freq
     setup[5] = (0xa4^0x02^0x45^chan^0x39);
-    
+
     for(i = 0 ; i < 6 ; i++)
         putc_serial0(setup[i]);
 
 }
 
-// Assigns CH=0, RF Freq
-void ANTAP1_RequestChanID(unsigned char chan) 
-{
-    unsigned char i;
-    unsigned char setup[6];
-    
-    setup[0] = 0xa4;
-    setup[1] = 0x02;
-    setup[2] = 0x4d;
-    setup[3] = chan;        // ChanNum
-    setup[4] = 0x51;        //Extra Info
-    setup[5] = (0xa4^0x02^0x4d^chan^0x51);
-    
-    for(i = 0 ; i < 6 ; i++)
-        putc_serial0(setup[i]);
-}
-
-void ANTAP1_SetChPeriod (unsigned char chan, unsigned char device) 
+void ANTAP1_SetChPeriod (unsigned char chan, unsigned char device)
 {
     unsigned char i;
     unsigned char setup[7];
@@ -339,18 +317,18 @@ void ANTAP1_SetChPeriod (unsigned char chan, unsigned char device)
     setup[4] = device;
     setup[5] = 0x1f;
     setup[6] = (0xa4^0x03^0x43^chan^device^0x1f);
-    
+
     for(i = 0 ; i < 7 ; i++)
         putc_serial0(setup[i]);
-  
+
 }
 
 // Assigns Device#=0000 (wildcard), Device Type ID=00 (wildcard), Trans Type=00 (wildcard)
-void ANTAP1_SetChId (unsigned char chan, unsigned char deviceType) 
+void ANTAP1_SetChId (unsigned char chan, unsigned char deviceType)
 {
     unsigned char i;
     unsigned char setup[9];
-    
+
     setup[0] = 0xa4;
     setup[1] = 0x05;
     setup[2] = 0x51;
@@ -360,29 +338,200 @@ void ANTAP1_SetChId (unsigned char chan, unsigned char deviceType)
     setup[6] = deviceType;
     setup[7] = 0x00;
     setup[8] = (0xa4^0x05^0x51^chan^0x00^0x00^deviceType^0x00);
-    
+
     for(i = 0 ; i < 9 ; i++)
        putc_serial0(setup[i]);
 }
 
 // Opens CH 0
-void ANTAP1_OpenCh (unsigned char chan) 
+void ANTAP1_OpenCh (unsigned char chan)
 {
     unsigned char i;
     unsigned char setup[5];
-    
+
     setup[0] = 0xa4;
     setup[1] = 0x01;
     setup[2] = 0x4b;
     setup[3] = chan;
     setup[4] = (0xa4^0x01^0x4b^chan);
-    
+
     for(i = 0 ; i < 5 ; i++)
       putc_serial0(setup[i]);
 
 }
 
+#endif
 
+// Assigns CH=0, RF Freq
+void ANTAP1_RequestChanID(unsigned char chan)
+{
+    unsigned char i;
+    unsigned char setup[6];
+
+    setup[0] = 0xa4;
+    setup[1] = 0x02;
+    setup[2] = 0x4d;
+    setup[3] = chan;        // ChanNum
+    setup[4] = 0x51;        //Extra Info
+    setup[5] = (0xa4^0x02^0x4d^chan^0x51);
+
+    for(i = 0 ; i < 6 ; i++)
+        putc_serial0(setup[i]);
+}
+
+
+
+int16_t read_byte(void) {
+    uint8_t buf;
+    int c=fat16_read_file(handle, &buf, 1);
+    if (c==0)
+        return -1;
+    return (int16_t)buf;
+}
+
+void seek(int32_t offset) {
+    fat16_seek_file(handle, &offset, FAT16_SEEK_SET);
+}
+
+// actually 1/1024 second counts
+uint16_t get_milliseconds(void) {
+    uint32_t t;
+    uint32_t s;
+    do {
+        t = CTC;
+        s = SEC;
+    } while (t != CTC);
+
+    t |= s << 16;
+
+    t >>=1; // this gives 32768 Hz
+    t >>=5; // divide by 32 for 1024 Hz
+
+    uint16_t r=t & 0xffff;
+    return r;
+}
+
+void write_ant(char *ant) {
+    int i;
+    int l=autoant_antlen(ant);
+
+    statLight(0,ON);
+
+    for(i = 0 ; i < l ; i++)
+       putc_serial0(ant[i]);
+
+    putc_serial0(0);
+    putc_serial0(0);
+
+    statLight(0,OFF);
+}
+
+void flush_ant(void) {
+    while (U0LSR & 0x1) U0RBR;
+}
+
+
+#define ANT_MAX_LENGTH (30)
+#define ANT_BUF_LEN 32
+uint8_t ant_rx_buf[ANT_BUF_LEN];
+#define ANT_SYNC_BYTE (0xa4)
+
+uint8_t *receive_ant(int timeout) {
+  enum States {ST_WAIT_FOR_SYNC, ST_GET_LENGTH, ST_GET_MESSAGE_ID, ST_GET_DATA, ST_VALIDATE_PACKET};
+  static enum States state = ST_WAIT_FOR_SYNC;
+
+  uint16_t t0 = get_milliseconds();
+  static int length;
+  static uint8_t checksum;
+  static int chars_in_buf=0;
+
+  while (1) {
+    int16_t time_remaining = t0 + timeout - get_milliseconds();
+    if (time_remaining < 0) return NULL;
+
+    if (!(U0LSR & 0x1)) continue;
+    uint8_t c=U0RBR;
+
+    switch (state) {
+    case ST_WAIT_FOR_SYNC:
+      if (c == ANT_SYNC_BYTE) {
+	state = ST_GET_LENGTH;
+	ant_rx_buf[chars_in_buf++] = c;
+	checksum = ANT_SYNC_BYTE;
+
+      }
+      break;
+
+    case ST_GET_LENGTH:
+      if ((c == 0) || (c > ANT_MAX_LENGTH)) {
+	chars_in_buf=0;
+	state = ST_WAIT_FOR_SYNC;
+      }
+      else {
+	ant_rx_buf[chars_in_buf++] = c;
+	checksum ^= c;
+	length = chars_in_buf+c+1;
+	state = ST_GET_MESSAGE_ID;
+      }
+      break;
+
+    case ST_GET_MESSAGE_ID:
+      ant_rx_buf[chars_in_buf++] = c;
+      checksum ^= c;
+      state = ST_GET_DATA;
+      break;
+
+    case ST_GET_DATA:
+      ant_rx_buf[chars_in_buf++] = c;
+      checksum ^= c;
+      if (chars_in_buf >= length){
+	state = ST_VALIDATE_PACKET;
+      }
+      break;
+
+    case ST_VALIDATE_PACKET:
+      ant_rx_buf[chars_in_buf++] = c;
+
+      if (checksum == c){
+	chars_in_buf=0; // ready for next time
+	state = ST_WAIT_FOR_SYNC;
+	return ant_rx_buf;
+      }
+      // chksum fail. start looking for message again
+      chars_in_buf=0;
+      state = ST_WAIT_FOR_SYNC;
+      break;
+    }
+  }
+}
+
+void write_out(const uint8_t *c) {
+    fat16_write_file(out_handle,c,strlen(c));
+    sd_raw_sync();
+}
+
+void warn_message(int warnno, int linenumber, int pos) {
+    char output_string[100];
+
+    string_printf(output_string,
+                  "At line %d byte %d : #%d (%s)\n",
+                  linenumber, pos, warnno,
+                  autoant_interpret_warning(warnno));
+    output_string[99]=0;
+
+    write_out(output_string);
+}
+
+autoant_ops_t ops={
+    .receive_ant_message=receive_ant,
+    .send_ant_message=write_ant,
+    .get_char=read_byte,
+    .seek=seek,
+    .write=write_out,
+    .warn=warn_message,
+    .get_milliseconds=get_milliseconds,
+    .flush_ant=flush_ant
+};
 
 /*******************************************************
  *                      MAIN
@@ -403,11 +552,11 @@ int main (void)
 
     Initialize();
 
-    fat_initialize();               
+    fat_initialize();
 
     set_time();
-    
-    setup_uart0(4800, 0);
+
+    setup_uart0(baud, 0);
 
     // Flash Status Lights
     for(i = 0; i < 5; i++)
@@ -420,14 +569,68 @@ int main (void)
         statLight(1,OFF);
     }
 
+    out_handle = root_open("out.txt");
+    if (!out_handle)
+        out_handle = root_open_new("out.txt");
+
+    int32_t zero=0;
+    fat16_seek_file(out_handle,&zero,FAT16_SEEK_END);
+    fat16_write_file(out_handle,"startup-----------\n",
+                         strlen("startup-----------\n"));
+
+    handle = root_open("init.ant");
+    if (0==handle) {
+        fat16_write_file(out_handle,
+                         "no init file found\n",
+                         strlen("no init file found\n"));
+        handle = root_open_new("init.ant");
+        fat16_write_file(handle,
+                         antap1_config,
+                         strlen(antap1_config));
+        autoant_exec(&ops);
+        fat16_close_file(handle);
+        handle = root_open("init.ant");
+    } else {
+        fat16_write_file(out_handle,
+                         "found init file\n",
+                         strlen("found init file\n"));
+    }
+
+    {
+        char baudrate_buffer[200];
+
+        int l=fat16_read_file(handle, &baudrate_buffer, 200);
+
+        for (i=0; i<l; i++) {
+            if (0 == memcmp(baudrate_buffer+i, "baudrate", strlen("baudrate"))) {
+                i += strlen("baudrate");
+                while ((i+4<l) && isspace(baudrate_buffer[i]))
+                    i++;
+                if (baudrate_buffer[i] != '=') 
+                    break;
+                i++;
+                
+                int new_baudrate=atoi(baudrate_buffer+i);
+                setup_uart0(new_baudrate, 0);                
+                
+            }
+        }
+    }
+
+    seek(0);
+
+
+    autoant_exec(&ops);
+    fat16_close_file(handle);
+    fat16_close_file(out_handle);
+
     count++;
     string_printf(name,"ANT%02d.gce",count);
     while(root_file_exists(name))
     {
         count++;
-        if(count == 250) 
-        {
-            while(1)
+        if(count == 250)
+        {            while(1)
             {
                 statLight(0,ON);
                 statLight(1,ON);
@@ -442,15 +645,18 @@ int main (void)
     }
 
     handle = root_open_new(name);
-  
-    sd_raw_sync();  
-	
+
+    sd_raw_sync();
+
     set_time();
 
     mode_0();
 
     return 0;
 }
+
+
+
 
 //Set the time
 void get_time(void)
@@ -467,17 +673,18 @@ void get_time(void)
 //Set the time
 void set_time(void)
 {
-  //Turn on timer 1, 60MHz by default  
-  T1TCR=0x01; 
+  //Turn on timer 1, 60MHz by default
+    T1TCR=0x01; // enable timer1
+
   CCR=0x13;  //Turn off RTC
-  YEAR=0; 
-  MONTH=0; 
-  DOM=0; 
-  DOW=0; 
-  DOY=0; 
-  HOUR=0; 
-  MIN=0; 
-  SEC=0; 
+  YEAR=0;
+  MONTH=0;
+  DOM=0;
+  DOW=0;
+  DOY=0;
+  HOUR=0;
+  MIN=0;
+  SEC=0;
   CCR=0x11;     //Turn RTC back on
 }
 
@@ -563,7 +770,7 @@ void add_time_stamp(void)
                 RX_array1[RX_in] = ts.hour;
                 RX_in ++;
 
-                if(RX_in == 512) 
+                if(RX_in == 512)
                 {
                     log_array1 = 1;
                     must_we_write();
@@ -588,7 +795,7 @@ void add_time_stamp(void)
                 RX_array1[RX_in] = ts.minute;
                 RX_in ++;
 
-                if(RX_in == 512) 
+                if(RX_in == 512)
                 {
                     log_array1 = 1;
                     must_we_write();
@@ -615,7 +822,7 @@ void add_time_stamp(void)
                 RX_array1[RX_in] = ts.second;
                 RX_in ++;
 
-                if(RX_in == 512) 
+                if(RX_in == 512)
                 {
                     log_array1 = 1;
                     must_we_write();
@@ -644,16 +851,16 @@ static void UART0ISR_2(void)
 {
     char temp;
     temp = U0RBR;
-    
+
     if(temp == trig){ get_frame = 1; }
-    
+
     if(get_frame)
     {
         if(RX_in < frame)
         {
             RX_array1[RX_in] = temp;
             RX_in++;
-    
+
             if(RX_in == frame)
             {
                 RX_array1[RX_in] = 10; // delimiters
@@ -666,7 +873,7 @@ static void UART0ISR_2(void)
         {
             RX_array2[RX_in - frame] = temp;
             RX_in++;
-    
+
             if(RX_in == 2*frame)
             {
                 RX_array2[RX_in - frame] = 10; // delimiters
@@ -677,9 +884,9 @@ static void UART0ISR_2(void)
             }
         }
     }
-    
+
     temp = U0IIR; // have to read this to clear the interrupt
-    
+
     VICVectAddr = 0;
 }
 
@@ -687,12 +894,12 @@ void FIQ_Routine(void)
 {
     char a;
     int j;
-    
+
     statLight(0,ON);
     for(j = 0; j < 5000000; j++);
     statLight(0,OFF);
     a = U0RBR;
-    
+
     a = U0IIR;  // have to read this to clear the interrupt
 }
 
@@ -710,51 +917,15 @@ void setup_uart0(int newbaud, char want_ints)
 {
     baud = newbaud;
     U0LCR = 0x83;   // 8 bits, no parity, 1 stop bit, DLAB = 1
-    
-    if(baud == 1200)
-    {
-        U0DLM = 0x0C;
-        U0DLL = 0x00;
-    }
-    else if(baud == 2400)
-    {
-        U0DLM = 0x06;
-        U0DLL = 0x00;
-    }
-    else if(baud == 4800)
-    {
-        U0DLM = 0x03;
-        U0DLL = 0x00;
-    }
-    else if(baud == 9600)
-    {
-        U0DLM = 0x01;
-        U0DLL = 0x80;
-    }
-    else if(baud == 19200)
-    {
-        U0DLM = 0x00;
-        U0DLL = 0xC0;
-    }
-    else if(baud == 38400)
-    {
-        U0DLM = 0x00;
-        U0DLL = 0x60;
-    }
-    else if(baud == 57600)
-    {
-        U0DLM = 0x00;
-        U0DLL = 0x40;
-    }
-    else if(baud == 115200)
-    {
-        U0DLM = 0x00;
-        U0DLL = 0x20;
-    }
-    
+
+    int32_t bauddiv=3686400 / baud;
+
+    U0DLM = (bauddiv >> 8) & 0xff;
+    U0DLL = bauddiv & 0xff;
+
     U0FCR = 0x01;
-    U0LCR = 0x03;   
-    
+    U0LCR = 0x03;
+
     if(want_ints == 1)
     {
         enableIRQ();
@@ -786,7 +957,7 @@ void statLight(int statLightnum, int onoff)
         if(onoff){ IOCLR0 = 0x00000800; } // On
         else { IOSET0 = 0x00000800; } // Off
     }
-    else // Stat 0 
+    else // Stat 0
     {
         if(onoff){ IOCLR0 = 0x00000004; } // On
         else { IOSET0 = 0x00000004; } // Off
@@ -798,7 +969,7 @@ void mode_0(void) // Auto UART mode
 {
     setup_uart0(baud,1);
     stringSize = 512;
-    ANTAP1_Config();
+    // ANTAP1_Config();
     mode_action();
 }
 
@@ -822,16 +993,16 @@ void must_we_write(void)
                     statLight(1,OFF);
             }
         }
-    
+
         sd_raw_sync();
         statLight(0,OFF);
         log_array1 = 0;
     }
-    
+
     if(log_array2 == 1)
     {
         statLight(1,ON);
-                
+
         if(fat16_write_file(handle,(unsigned char *)RX_array2, stringSize) < 0)
         {
             while(1)
@@ -844,7 +1015,7 @@ void must_we_write(void)
                     statLight(1,OFF);
             }
         }
-    
+
         sd_raw_sync();
         statLight(1,OFF);
         log_array2 = 0;
@@ -858,11 +1029,11 @@ void mode_action(void)
     while(1)
     {
         must_we_write(); //Check to see if the buffer if ready to be written
-    
+
         if((IOPIN0 & 0x00000008) == 0) // if button pushed, log file & quit
         {
             VICIntEnClr = 0xFFFFFFFF;
-    
+
             if(RX_in < 512)
             {
                 fat16_write_file(handle, (unsigned char *)RX_array1, RX_in);
@@ -900,7 +1071,7 @@ void AD_conversion(int regbank)
          }
          temp &= 0x0000FFC0;
          temp2 = temp / 0x00000040;
-    
+
          AD0CR = 0x00000000;
      }
      else        // bank 1
@@ -912,7 +1083,7 @@ void AD_conversion(int regbank)
          }
          temp &= 0x0000FFC0;
          temp2 = temp / 0x00000040;
-    
+
          AD1CR = 0x00000000;
      }
 
@@ -924,23 +1095,9 @@ void fat_initialize(void)
     {
         while(1);
     }
-    
-    openroot();
-        
-}
 
-void flashBoobies(int num_of_times)
-{
-    // Flash Status Lights
-    for(int i = 0; i < num_of_times; i++)
-    {
-        statLight(0,ON);
-        statLight(1,ON);
-        delay_ms(100);
-        statLight(0,OFF);
-        statLight(1,OFF);
-        delay_ms(100); 
-    }
+    openroot();
+
 }
 
 void delay_ms(int count)
@@ -953,7 +1110,7 @@ void delay_ms(int count)
 
 int parseANT(unsigned char chr)
 {
-    
+
     if ((chr == MESG_TX_SYNC) && (inMsg == FALSE))
     {
         msgN = 0; // Always reset msg count if we get a sync
@@ -980,7 +1137,7 @@ int parseANT(unsigned char chr)
       msgN++;
     }
     else if (msgN == (size + 3)) // sync, size, checksum
-    {                           
+    {
         //Write the time.
         inMsg = FALSE;
         msgN = 0;
@@ -990,6 +1147,6 @@ int parseANT(unsigned char chr)
     {
         msgN++;
     }
-    
-    return 0; 
+
+    return 0;
 }

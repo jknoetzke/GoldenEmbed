@@ -34,30 +34,32 @@ TARGET = main
 
 # List C source files here. (C dependencies are automatically generated.)
 # use file-extension c for "c-only"-files
-SRC = $(TARGET).c 
+SRC = $(TARGET).c
+
+SRC += autoant.c
 
 #Needed most of the time for basic functions
-SRC += $(LIBPATH)syscalls.c 
-SRC += $(LIBPATH)rprintf.c 
-SRC += $(LIBPATH)string_printf.c 
-SRC += $(LIBPATH)serial.c 
+SRC += $(LIBPATH)syscalls.c
+SRC += $(LIBPATH)rprintf.c
+SRC += $(LIBPATH)string_printf.c
+SRC += $(LIBPATH)serial.c
 
 #Functions for SD interaction
-SRC += $(LIBPATH)rootdir.c 
-SRC += $(LIBPATH)sd_raw.c 
-SRC += $(LIBPATH)fat16.c 
-SRC += $(LIBPATH)partition.c 
+SRC += $(LIBPATH)rootdir.c
+SRC += $(LIBPATH)sd_raw.c
+SRC += $(LIBPATH)fat16.c
+SRC += $(LIBPATH)partition.c
 SRC += $(LIBPATH)itoa.c
 
 #Functions for USB Mass Storage Device
-SRC += $(USBPATH)main_msc.c 
-SRC += $(USBPATH)msc_bot.c 
-SRC += $(USBPATH)msc_scsi.c 
-SRC += $(USBPATH)blockdev_sd.c 
+SRC += $(USBPATH)main_msc.c
+SRC += $(USBPATH)msc_bot.c
+SRC += $(USBPATH)msc_scsi.c
+SRC += $(USBPATH)blockdev_sd.c
 SRC += $(USBPATH)lpc2000_spi.c
-SRC += $(USBPATH)usbinit.c 
-SRC += $(USBPATH)usbhw_lpc.c 
-SRC += $(USBPATH)usbcontrol.c 
+SRC += $(USBPATH)usbinit.c
+SRC += $(USBPATH)usbhw_lpc.c
+SRC += $(USBPATH)usbcontrol.c
 SRC += $(USBPATH)usbstdreq.c
 SRC += $(USBPATH)armVIC.c
 
@@ -67,12 +69,12 @@ SRCARM = $(LIBPATH)irq.c
 
 # List C++ source files here.
 # use file-extension cpp for C++-files (use extension .cpp)
-CPPSRC = 
+CPPSRC =
 
 # List C++ source files here which must be compiled in ARM-Mode.
 # use file-extension cpp for C++-files (use extension .cpp)
 #CPPSRCARM = $(TARGET).cpp
-CPPSRCARM = 
+CPPSRCARM =
 
 # List Assembler source files here.
 # Make them always end in a capital .S.  Files ending in a lowercase .s
@@ -81,7 +83,7 @@ CPPSRCARM =
 # Even though the DOS/Win* filesystem matches both .s and .S the same,
 # it will preserve the spelling of the filenames, and gcc itself does
 # care about how the name is spelled on its command-line.
-ASRC = 
+ASRC =
 
 # List Assembler source files here which must be assembled in ARM-Mode..
 ASRCARM = Startup.S
@@ -94,14 +96,14 @@ ASRCARM = Startup.S
 #FORMAT = ihex
 FORMAT = binary
 
-# Optimization level, can be [0, 1, 2, 3, s]. 
+# Optimization level, can be [0, 1, 2, 3, s].
 # 0 = turn off optimization. s = optimize for size.
 # (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
 OPT = s
 #OPT = 0
 
 ## Using the Atmel AT91_lib produces warning with
-## the default warning-levels. 
+## the default warning-levels.
 ## yes - disable these warnings; no - keep default settings
 #AT91LIBNOWARN = yes
 AT91LIBNOWARN = no
@@ -121,7 +123,7 @@ EXTRAINCDIRS += $(IN2_COMMON)/LPCUSB
 # List any extra directories to look for library files here.
 #     Each directory must be seperated by a space.
 #EXTRA_LIBDIRS = ../arm7_efsl_0_2_4
-EXTRA_LIBDIRS = 
+EXTRA_LIBDIRS =
 
 
 # Compiler flag to set the C Standard level.
@@ -132,7 +134,7 @@ EXTRA_LIBDIRS =
 CSTANDARD = -std=gnu99
 
 # Place -D or -U options for C here
-CDEFS =  -D$(RUN_MODE) 
+CDEFS =  -D$(RUN_MODE)
 
 # Place -I options here
 CINCS = -I $(LIBPATH)
@@ -160,27 +162,27 @@ ADEFS += -D__WinARM__
 CFLAGS = -g$(DEBUG)
 CFLAGS += $(CDEFS) $(CINCS)
 CFLAGS += -O$(OPT)
-CFLAGS += -Wall -Wcast-align -Wimplicit 
+CFLAGS += -Wall -Wcast-align -Wimplicit
 CFLAGS += -Wpointer-arith -Wswitch
 CFLAGS += -Wredundant-decls -Wreturn-type -Wshadow -Wunused
-CFLAGS += -Wa,-adhlns=$(subst $(suffix $<),.lst,$<) 
+CFLAGS += -Wa,-adhlns=$(subst $(suffix $<),.lst,$<)
 CFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS))
 
 # flags only for C
-CONLYFLAGS += -Wnested-externs 
+CONLYFLAGS += -Wnested-externs
 CONLYFLAGS += $(CSTANDARD)
 
 ifneq ($(AT91LIBNOWARN),yes)
 #AT91-lib warnings with:
 CFLAGS += -Wcast-qual
-CONLYFLAGS += -Wmissing-prototypes 
+CONLYFLAGS += -Wmissing-prototypes
 CONLYFLAGS += -Wstrict-prototypes
 CONLYFLAGS += -Wmissing-declarations
 endif
 
 # flags only for C++ (arm-elf-g++)
 # CPPFLAGS = -fno-rtti -fno-exceptions
-CPPFLAGS = 
+CPPFLAGS =
 
 # Assembler flags.
 #  -Wa,...:    tell GCC to pass this to the assembler.
@@ -193,7 +195,7 @@ ASFLAGS = $(ADEFS) -Wa,-adhlns=$(<:.S=.lst),-g$(DEBUG)
 
 # Extra libraries
 #    Each library-name must be seperated by a space.
-#    To add libxyz.a, libabc.a and libefsl.a: 
+#    To add libxyz.a, libabc.a and libefsl.a:
 #    EXTRA_LIBS = xyz abc efsl
 #EXTRA_LIBS = efsl
 EXTRA_LIBS =
@@ -213,7 +215,7 @@ MATH_LIB = -lm
 LDFLAGS = -nostartfiles -Wl,-Map=$(TARGET).map,--cref
 LDFLAGS += -lc
 LDFLAGS += $(NEWLIBLPC) $(MATH_LIB)
-LDFLAGS += -lc -lgcc 
+LDFLAGS += -lc -lgcc
 LDFLAGS += $(CPLUSPLUS_LIB)
 LDFLAGS += $(patsubst %,-L%,$(EXTRA_LIBDIRS))
 LDFLAGS += $(patsubst %,-l%,$(EXTRA_LIBS))
@@ -223,11 +225,11 @@ LDFLAGS += $(patsubst %,-l%,$(EXTRA_LIBS))
 
 #This line is used if you want to load main.hex into 0x00
 #LDFLAGS +=-Tlpc2138.cmd
-LDFLAGS += -Tmain_memory_block.ld 
+LDFLAGS += -Tmain_memory_block.ld
 
 
 # ---------------------------------------------------------------------------
-# Flash-Programming support using lpc21isp by Martin Maurer 
+# Flash-Programming support using lpc21isp by Martin Maurer
 # only for Philips LPC and Analog ADuC ARMs
 #
 # Settings and variables:
@@ -250,14 +252,16 @@ LPC21ISP_CONTROL = -control
 ## DIRARMBIN = $(DIRAVR)/bin/
 ## DIRAVRUTILS = $(DIRAVR)/utils/bin/
 
+COMPILER=arm-elf-eabi
+
 # Define programs and commands.
 SHELL = sh
-CC = arm-elf-gcc
-CPP = arm-elf-g++
-OBJCOPY = arm-elf-objcopy
-OBJDUMP = arm-elf-objdump
-SIZE = arm-elf-size
-NM = arm-elf-nm
+CC = $(COMPILER)-gcc
+CPP = $(COMPILER)-g++
+OBJCOPY = $(COMPILER)-objcopy
+OBJDUMP = $(COMPILER)-objdump
+SIZE = $(COMPILER)-size
+NM = $(COMPILER)-nm
 REMOVE = rm -f
 COPY = cp
 
@@ -266,7 +270,7 @@ COPY = cp
 MSG_ERRORS_NONE = Errors: none
 MSG_BEGIN = "-------- begin (mode: $(RUN_MODE)) --------"
 MSG_END = --------  end  --------
-MSG_SIZE_BEFORE = Size before: 
+MSG_SIZE_BEFORE = Size before:
 MSG_SIZE_AFTER = Size after:
 MSG_FLASH = Creating load file for Flash:
 MSG_EXTENDED_LISTING = Creating Extended Listing:
@@ -283,11 +287,11 @@ MSG_FORMATERROR = Can not handle output-format
 MSG_LPC21_RESETREMINDER = You may have to bring the target in bootloader-mode now.
 
 # Define all object files.
-COBJ      = $(SRC:.c=.o) 
+COBJ      = $(SRC:.c=.o)
 AOBJ      = $(ASRC:.S=.o)
 COBJARM   = $(SRCARM:.c=.o)
 AOBJARM   = $(ASRCARM:.S=.o)
-CPPOBJ    = $(CPPSRC:.cpp=.o) 
+CPPOBJ    = $(CPPSRC:.cpp=.o)
 CPPOBJARM = $(CPPSRCARM:.cpp=.o)
 
 # Define all listing files.
@@ -311,20 +315,20 @@ all: begin gccversion sizebefore build sizeafter finished end
 #build: elf hex lss sym
 #hex: $(TARGET).hex
 #IMGEXT=hex
-#else 
+#else
 #ifeq ($(FORMAT),binary)
-build: elf bin lss sym hex FW.SFE
+build: install #elf bin lss sym hex FW.SFE
 
 #bin: $(TARGET).bin
 hex: $(TARGET).hex
 #IMGEXT=bin
-#else 
+#else
 #$(error "$(MSG_FORMATERROR) $(FORMAT)")
 #endif
 #endif
 
 elf: $(TARGET).elf
-lss: $(TARGET).lss 
+lss: $(TARGET).lss
 sym: $(TARGET).sym
 
 # Eye candy.
@@ -351,13 +355,13 @@ sizeafter:
 
 
 # Display compiler version information.
-gccversion : 
+gccversion :
 	@$(CC) --version
 
 
 # Program the device.
 ifeq ($(FLASH_TOOL),UVISION)
-# Program the device with Keil's uVision (needs configured uVision-Workspace). 
+# Program the device with Keil's uVision (needs configured uVision-Workspace).
 program: $(TARGET).$(IMGEXT)
 	@echo
 	@echo "Programming with uVision"
@@ -387,7 +391,7 @@ endif
 	@echo
 	@echo $(MSG_FLASH) $@
 	$(OBJCOPY) -O ihex $< $@
-	
+
 # Create final output file (.bin) from ELF output file.
 %.bin: %.elf
 	@echo
@@ -400,6 +404,11 @@ FW.SFE: main.elf
 	@echo $(MSG_FLASH) $@
 	$(OBJCOPY) -O binary $< $@
 
+install: FW.SFE
+	cp FW.SFE /media/QLOG/
+
+TAGS: $(SRC)
+	etags $(SRC)
 
 # Create extended listing file from ELF output file.
 # testing: option -C
@@ -429,25 +438,25 @@ FW.SFE: main.elf
 $(COBJ) : %.o : %.c
 	@echo
 	@echo $(MSG_COMPILING) $<
-	$(CC) -c $(THUMB) $(ALL_CFLAGS) $(CONLYFLAGS) $< -o $@ 
+	$(CC) -c $(THUMB) $(ALL_CFLAGS) $(CONLYFLAGS) $< -o $@
 
 # Compile: create object files from C source files. ARM-only
 $(COBJARM) : %.o : %.c
 	@echo
 	@echo $(MSG_COMPILING_ARM) $<
-	$(CC) -c $(ALL_CFLAGS) $(CONLYFLAGS) $< -o $@ 
+	$(CC) -c $(ALL_CFLAGS) $(CONLYFLAGS) $< -o $@
 
 # Compile: create object files from C++ source files. ARM/Thumb
 $(CPPOBJ) : %.o : %.cpp
 	@echo
 	@echo $(MSG_COMPILINGCPP) $<
-	$(CPP) -c $(THUMB) $(ALL_CFLAGS) $(CPPFLAGS) $< -o $@ 
+	$(CPP) -c $(THUMB) $(ALL_CFLAGS) $(CPPFLAGS) $< -o $@
 
 # Compile: create object files from C++ source files. ARM-only
 $(CPPOBJARM) : %.o : %.cpp
 	@echo
 	@echo $(MSG_COMPILINGCPP_ARM) $<
-	$(CPP) -c $(ALL_CFLAGS) $(CPPFLAGS) $< -o $@ 
+	$(CPP) -c $(ALL_CFLAGS) $(CPPFLAGS) $< -o $@
 
 
 # Compile: create assembler files from C source files. ARM/Thumb
@@ -501,9 +510,9 @@ clean_list :
 	$(REMOVE) $(SRC:.c=.d)
 	$(REMOVE) $(SRCARM:.c=.s)
 	$(REMOVE) $(SRCARM:.c=.d)
-	$(REMOVE) $(CPPSRC:.cpp=.s) 
+	$(REMOVE) $(CPPSRC:.cpp=.s)
 	$(REMOVE) $(CPPSRC:.cpp=.d)
-	$(REMOVE) $(CPPSRCARM:.cpp=.s) 
+	$(REMOVE) $(CPPSRCARM:.cpp=.s)
 	$(REMOVE) $(CPPSRCARM:.cpp=.d)
 	$(REMOVE) FW.SFE
 	$(REMOVE) .dep/*
